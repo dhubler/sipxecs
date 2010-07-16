@@ -47,6 +47,10 @@ public class LdapManagerTestDb extends TestCaseDb {
         settings.setAuthenticationOptions(AuthenticationOptions.NO_LDAP);
         settings.setEnableOpenfireConfiguration(true);
         settings.setConfigured(false);
+        //test noLDAP
+        settings.setAuthenticationOptions(AuthenticationOptions.NO_LDAP);
+        settings.setEnableOpenfireConfiguration(true);
+
         m_context.saveSystemSettings(settings);
         after = TestHelper.getConnection().createDataSet().getTable("ldap_settings");
         assertEquals(1, after.getRowCount());
