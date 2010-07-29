@@ -1,6 +1,10 @@
+<<<<<<< HEAD
 /*
  *
  *
+=======
+/**
+>>>>>>> UC-73: eZuce Copyright header
  * Copyright (c) 2010 eZuce, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
