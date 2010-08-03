@@ -111,7 +111,10 @@ BuildRequires: alsa-lib-devel
 BuildRequires: which
 BuildRequires: zlib-devel
 BuildRequires: e2fsprogs-devel
+<<<<<<< HEAD
 BuildRequires: erlang
+=======
+>>>>>>> Changed freeswitch to be checked out via git
 Requires: alsa-lib
 Requires: libogg
 Requires: libvorbis
@@ -124,12 +127,15 @@ Requires: openldap
 Requires: db4
 Requires: gdbm
 Requires: zlib
+<<<<<<< HEAD
 Requires: erlang
 Requires: libtiff
 Requires: libjpeg
 Requires: erlang
 Requires: zlib
 Requires: python
+=======
+>>>>>>> Changed freeswitch to be checked out via git
 
 %if %{?suse_version:1}0
 %if 0%{?suse_version} > 910
@@ -341,7 +347,7 @@ APPLICATION_MODULES_AE="applications/mod_avmd  applications/mod_commands applica
 
 APPLICATION_MODULES_FM="applications/mod_fifo applications/mod_fsv applications/mod_hash applications/mod_lcr applications/mod_limit"
  # applications/mod_memcache
-APPLICATION_MODULES_NY="applications/mod_redis applications/mod_rss applications/mod_spandsp applications/mod_stress applications/mod_spy " # applications/mod_soundtouch 
+APPLICATION_MODULES_NY=" applications/mod_redis applications/mod_rss applications/mod_spandsp applications/mod_stress applications/mod_spy " # applications/mod_soundtouch 
 
 APPLICATION_MODULES_VZ="applications/mod_valet_parking applications/mod_vmd applications/mod_voicemail"
 
@@ -757,6 +763,7 @@ fi
 #%{prefix}/mod/mod_pocketsphinx.so*
 %{prefix}/mod/mod_portaudio.so*
 %{prefix}/mod/mod_portaudio_stream.so*
+#%{prefix}/mod/mod_portaudio.so*
 %{prefix}/mod/mod_redis.so*
 %{prefix}/mod/mod_rss.so*
 #%{prefix}/mod/mod_shout.so*

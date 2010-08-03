@@ -25,7 +25,7 @@ all : PRINT_HEADER $(RPMS) PRINT_FOOTER
 .PHONY: build-rpms
 build-rpms:
 	pushd @RPMBUILD_TOPDIR@/SOURCES ; \
-	git  clone $(GIT_URL) sipx-freeswitch-$(VERSION) ; \
+	git  clone  $(GIT_URL) sipx-freeswitch-$(VERSION) ; \
 	cd sipx-freeswitch-$(VERSION) ; \
 	git archive --format tar --prefix sipx-freeswitch-$(VERSION)/ $(GIT_RELEASE)| bzip2 > ../$(SRC_TARBALL) ; \
 	cd .. ; \
