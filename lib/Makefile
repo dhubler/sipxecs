@@ -83,9 +83,6 @@ f12 : $(CUSTOM_PACKAGES)
 .PHONY: rhel5 centos5
 rhel5 centos5 : erlang_with_no_gui $(CUSTOM_PACKAGES) rsyslog nsis cppunit xerces-c rubygems rubygem-rake rubygem-file-tail rrdtool stunnel sipx-openfire localrepo
 
-.PHONY: rhel55 centos55
-rhel55 centos55 : $(CUSTOM_PACKAGES) nsis cppunit xerces-c rubygems rrdtool stunnel
-
 .PHONY: suse11.1
 suse11.1 : $(CUSTOM_PACKAGES) nsis libpcap tcpdump openssl stunnel w3c-libwww
 
