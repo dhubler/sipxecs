@@ -34,7 +34,7 @@ BuildRequires: postgresql-devel >= 8.1
 Summary: MySQL support for rsyslog
 Group: System Environment/Daemons
 Requires: %name = %version-%release
-BuildRequires: mysql-devel
+BuildRequires: mysql-devel >= 4.0
 
 %description
 Rsyslog is an enhanced multi-threaded syslogd supporting, among others, MySQL,
