@@ -757,7 +757,6 @@ fi
 #%{prefix}/mod/mod_pocketsphinx.so*
 %{prefix}/mod/mod_portaudio.so*
 %{prefix}/mod/mod_portaudio_stream.so*
-#%{prefix}/mod/mod_portaudio.so*
 %{prefix}/mod/mod_redis.so*
 %{prefix}/mod/mod_rss.so*
 #%{prefix}/mod/mod_shout.so*
