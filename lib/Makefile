@@ -64,7 +64,6 @@ rubygem-rake:
 	$(MAKE) $@.bld
 	sudo yum --nogpgcheck -y localinstall  dist/RPM/rubygem-rake*rpm
 
-
 # required on all platforms
 CUSTOM_PACKAGES = asciidoc ruby-postgres ruby-dbi freeswitch
 
