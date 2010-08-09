@@ -111,10 +111,7 @@ BuildRequires: alsa-lib-devel
 BuildRequires: which
 BuildRequires: zlib-devel
 BuildRequires: e2fsprogs-devel
-<<<<<<< HEAD
 BuildRequires: erlang
-=======
->>>>>>> Changed freeswitch to be checked out via git
 Requires: alsa-lib
 Requires: libogg
 Requires: libvorbis
@@ -127,15 +124,12 @@ Requires: openldap
 Requires: db4
 Requires: gdbm
 Requires: zlib
-<<<<<<< HEAD
 Requires: erlang
 Requires: libtiff
 Requires: libjpeg
 Requires: erlang
 Requires: zlib
 Requires: python
-=======
->>>>>>> Changed freeswitch to be checked out via git
 
 %if %{?suse_version:1}0
 %if 0%{?suse_version} > 910
