@@ -62,7 +62,7 @@ sipXconfig : sipXcommons
 	@echo sipXconfig
 
 .PHONY: sipXacd
-sipXacd : sipXcallLib sipXcommserverLib sipXmediaAdapterLib
+sipXacd : sipXcallLib sipXcommserverLib sipxcommserverlib-devel sipXmediaAdapterLib
 	@echo sipXacd
 
 .PHONY: sipXpark
