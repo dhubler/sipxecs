@@ -22,6 +22,7 @@ ARCH = $(shell uname -p)
 AC_TARGETS = \
 	cppunit \
 	java-sun \
+	rubygem-rake \
 	ruby-dbi \
 	ruby-postgres \
 	sipx-openfire \
