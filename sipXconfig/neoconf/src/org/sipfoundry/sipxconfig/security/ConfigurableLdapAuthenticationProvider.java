@@ -17,6 +17,7 @@ package org.sipfoundry.sipxconfig.security;
 
 import org.acegisecurity.Authentication;
 import org.acegisecurity.AuthenticationServiceException;
+import org.acegisecurity.BadCredentialsException;
 import org.acegisecurity.ldap.DefaultInitialDirContextFactory;
 import org.acegisecurity.ldap.InitialDirContextFactory;
 import org.acegisecurity.ldap.LdapUserSearch;
@@ -30,6 +31,7 @@ import org.acegisecurity.providers.ldap.authenticator.BindAuthenticator;
 import org.acegisecurity.userdetails.UserDetails;
 import org.acegisecurity.userdetails.UserDetailsService;
 import org.acegisecurity.userdetails.ldap.LdapUserDetails;
+import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
 import org.sipfoundry.sipxconfig.bulk.ldap.AttrMap;
 import org.sipfoundry.sipxconfig.bulk.ldap.LdapConnectionParams;
@@ -47,6 +49,7 @@ import org.springframework.dao.DataAccessException;
 public class ConfigurableLdapAuthenticationProvider implements AuthenticationProvider, DaoEventListener {
 
     private LdapManager m_ldapManager;
+    private LdapConnectionParams m_params;
     private LdapSystemSettings m_settings;
     private LdapAuthenticationProvider m_provider;
     private LdapAuthoritiesPopulator m_authoritiesPopulator;
@@ -111,15 +114,15 @@ public class ConfigurableLdapAuthenticationProvider implements AuthenticationPro
     }
 
     LdapAuthenticationProvider createProvider() {
-        LdapConnectionParams params = m_ldapManager.getConnectionParams();
-        if (params == null) {
+        m_params = m_ldapManager.getConnectionParams();
+        if (m_params == null) {
             return null;
         }
-        InitialDirContextFactory dirFactory = getDirFactory(params);
+        InitialDirContextFactory dirFactory = getDirFactory(m_params);
         BindAuthenticator authenticator = new BindAuthenticator(dirFactory);
         authenticator.setUserSearch(getSearch(dirFactory)); // used for user login
         authenticator.setUserDnPatterns(new String[] {
-            params.getPrincipal()  // used for binding
+            m_params.getPrincipal()  // used for binding
         });
 
         LdapAuthenticationProvider provider = new SipxLdapAuthenticationProvider(authenticator);
@@ -182,6 +185,12 @@ public class ConfigurableLdapAuthenticationProvider implements AuthenticationPro
         protected void additionalAuthenticationChecks(UserDetails userDetails,
                                         UsernamePasswordAuthenticationToken authentication) {
             // passwords are checked in ldap layer
+            //make sure that LDAP bind password is rejected
+            if (ObjectUtils.equals(authentication.getCredentials(), m_params.getSecret())) {
+                throw new BadCredentialsException(messages.getMessage(
+                        "AbstractUserDetailsAuthenticationProvider.badCredentials",
+                        "Bad credentials"), userDetails.getUsername());
+            }
             return;
         }
     }
