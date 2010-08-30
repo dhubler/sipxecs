@@ -22,7 +22,6 @@ ARCH = $(shell uname -p)
 AC_TARGETS = \
 	cppunit \
 	java-sun \
-	rubygem-rake \
 	ruby-dbi \
 	ruby-postgres \
 	sipx-openfire \
@@ -64,6 +63,7 @@ rubygem-rake:
 	$(MAKE) $@.cfg
 	$(MAKE) $@.bld
 	sudo yum --nogpgcheck -y localinstall  dist/RPM/rubygem-rake*rpm
+
 
 # required on all platforms
 CUSTOM_PACKAGES = asciidoc ruby-postgres ruby-dbi freeswitch
