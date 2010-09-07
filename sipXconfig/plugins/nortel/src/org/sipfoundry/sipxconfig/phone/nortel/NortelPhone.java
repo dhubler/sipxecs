@@ -12,7 +12,6 @@ package org.sipfoundry.sipxconfig.phone.nortel;
 import java.text.MessageFormat;
 import java.util.Collection;
 
-import org.apache.commons.lang.ObjectUtils;
 import org.sipfoundry.sipxconfig.common.CoreContext;
 import org.sipfoundry.sipxconfig.common.User;
 import org.sipfoundry.sipxconfig.device.Device;
@@ -22,7 +21,6 @@ import org.sipfoundry.sipxconfig.device.Profile;
 import org.sipfoundry.sipxconfig.device.ProfileContext;
 import org.sipfoundry.sipxconfig.device.ProfileFilter;
 import org.sipfoundry.sipxconfig.device.ProfileLocation;
-import org.sipfoundry.sipxconfig.gateway.audiocodes.AudioCodesModel;
 import org.sipfoundry.sipxconfig.phone.Line;
 import org.sipfoundry.sipxconfig.phone.LineInfo;
 import org.sipfoundry.sipxconfig.phone.Phone;
@@ -35,11 +33,11 @@ import org.sipfoundry.sipxconfig.speeddial.SpeedDial;
 public class NortelPhone extends Phone {
 
     private static final String NORTEL_FORCE_CONFIG = "nortel/11xxeSIP.cfg";
+    private static final String REL_3_2_OR_LATER = "3.2orLater";
     private static final String TYPE = "text/plain";
     private String m_phonebookFilename = "{0}-phonebook.ab";
     private String m_featureKeyListFilename = "{0}-fkl.fk";
     private CoreContext m_coreContext;
-    private static final String REL_3_2_OR_LATER = "3.2orLater";
 
     public NortelPhone() {
 
