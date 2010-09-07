@@ -186,12 +186,8 @@ public class ConfigurableLdapAuthenticationProvider implements AuthenticationPro
                                         UsernamePasswordAuthenticationToken authentication) {
             // passwords are checked in ldap layer
             //make sure that LDAP bind password is rejected
-<<<<<<< HEAD
-            if (ObjectUtils.equals(authentication.getCredentials(), m_params.getSecret())) {
-=======
             LdapConnectionParams params = m_ldapManager.getConnectionParams();
             if (ObjectUtils.equals(authentication.getCredentials(), params.getSecret())) {
->>>>>>> XX-8657:ldap authentication authenticates EVERY user both as the BIND USER, and using the credentials being given it
                 throw new BadCredentialsException(messages.getMessage(
                         "AbstractUserDetailsAuthenticationProvider.badCredentials",
                         "Bad credentials"), userDetails.getUsername());
