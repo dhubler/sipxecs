@@ -49,7 +49,6 @@ import org.springframework.dao.DataAccessException;
 public class ConfigurableLdapAuthenticationProvider implements AuthenticationProvider, DaoEventListener {
 
     private LdapManager m_ldapManager;
-    private LdapConnectionParams m_params;
     private LdapSystemSettings m_settings;
     private LdapAuthenticationProvider m_provider;
     private LdapAuthoritiesPopulator m_authoritiesPopulator;
@@ -114,15 +113,15 @@ public class ConfigurableLdapAuthenticationProvider implements AuthenticationPro
     }
 
     LdapAuthenticationProvider createProvider() {
-        m_params = m_ldapManager.getConnectionParams();
-        if (m_params == null) {
+        LdapConnectionParams params = m_ldapManager.getConnectionParams();
+        if (params == null) {
             return null;
         }
-        InitialDirContextFactory dirFactory = getDirFactory(m_params);
+        InitialDirContextFactory dirFactory = getDirFactory(params);
         BindAuthenticator authenticator = new BindAuthenticator(dirFactory);
         authenticator.setUserSearch(getSearch(dirFactory)); // used for user login
         authenticator.setUserDnPatterns(new String[] {
-            m_params.getPrincipal()  // used for binding
+            params.getPrincipal()  // used for binding
         });
 
         LdapAuthenticationProvider provider = new SipxLdapAuthenticationProvider(authenticator);
