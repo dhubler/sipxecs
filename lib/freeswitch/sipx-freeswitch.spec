@@ -341,7 +341,7 @@ APPLICATION_MODULES_AE="applications/mod_avmd  applications/mod_commands applica
 
 APPLICATION_MODULES_FM="applications/mod_fifo applications/mod_fsv applications/mod_hash applications/mod_lcr applications/mod_limit"
  # applications/mod_memcache
-APPLICATION_MODULES_NY=" applications/mod_redis applications/mod_rss applications/mod_spandsp applications/mod_stress applications/mod_spy " # applications/mod_soundtouch 
+APPLICATION_MODULES_NY="applications/mod_redis applications/mod_rss applications/mod_spandsp applications/mod_stress applications/mod_spy " # applications/mod_soundtouch 
 
 APPLICATION_MODULES_VZ="applications/mod_valet_parking applications/mod_vmd applications/mod_voicemail"
 
