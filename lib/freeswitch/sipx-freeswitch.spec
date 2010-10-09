@@ -8,7 +8,7 @@
 #
 # includes module(s): freeswitch-devel freeswitch-codec-passthru-amr freeswitch-codec-passthru-amrwb freeswitch-codec-passthru-g729 
 #                     freeswitch-codec-passthru-g7231 freeswitch-lua freeswitch-perl freeswitch-python freeswitch-spidermonkey
-#                     freeswitch-lan-de freeswitch-lang-en freeswitch-lang-fr freeswitch-lang-ru freeswitch-openzap
+#                     freeswitch-lan-de freeswitch-lang-en freeswitch-lang-fr freeswitch-lang-ru freeswitch-freetdm
 #
 # Initial Version Copyright (C) 2007 Peter Nixon and Michal Bielicki, All Rights Reserved.
 #
@@ -54,19 +54,19 @@ Vendor:       	http://www.freeswitch.org/
 #							Source files and where to get them
 #
 ###############################################################################################################################
-Source0:      	%name-%version.tar.gz
-#Source1:		http://files.freeswitch.org/downloads/libs/celt-0.7.0.tar.gz
-#Source2:		http://files.freeswitch.org/downloads/libs/flite-1.3.99-latest.tar.gz
-#Source3:		http://files.freeswitch.org/downloads/libs/lame-3.97.tar.gz
-#Source4:		http://files.freeswitch.org/downloads/libs/libshout-2.2.2.tar.gz
-#Source5:		http://files.freeswitch.org/downloads/libs/mpg123.tar.gz
-#Source6:		http://files.freeswitch.org/downloads/libs/openldap-2.4.11.tar.gz
-# Source7:		http://files.freeswitch.org/downloads/libs/pocketsphinx-0.5.99-20091212.tar.gz
-# Source8:		http://files.freeswitch.org/downloads/libs/soundtouch-1.3.1.tar.gz
-# Source9:		http://files.freeswitch.org/downloads/libs/sphinxbase-0.4.99-20091212.tar.gz
-# Source10:		http://files.freeswitch.org/downloads/libs/communicator_semi_6000_20080321.tar.gz
-# Source11:		http://files.freeswitch.org/downloads/libs/libmemcached-0.32.tar.gz
-Prefix:         %{prefix}
+Source0:      		%{SOURCE}
+Source1:		http://files.freeswitch.org/downloads/libs/celt-0.7.1.tar.gz
+Source2:		http://files.freeswitch.org/downloads/libs/flite-1.3.99-latest.tar.gz
+Source3:		http://files.freeswitch.org/downloads/libs/lame-3.97.tar.gz
+Source4:		http://files.freeswitch.org/downloads/libs/libshout-2.2.2.tar.gz
+Source5:		http://files.freeswitch.org/downloads/libs/mpg123.tar.gz
+Source6:		http://files.freeswitch.org/downloads/libs/openldap-2.4.11.tar.gz
+Source7:		http://files.freeswitch.org/downloads/libs/pocketsphinx-0.5.99-20091212.tar.gz
+Source8:		http://files.freeswitch.org/downloads/libs/soundtouch-1.3.1.tar.gz
+Source9:		http://files.freeswitch.org/downloads/libs/sphinxbase-0.4.99-20091212.tar.gz
+Source10:		http://files.freeswitch.org/downloads/libs/communicator_semi_6000_20080321.tar.gz
+Source11:		http://files.freeswitch.org/downloads/libs/libmemcached-0.32.tar.gz
+Prefix:         	%{prefix}
 
 
 ###############################################################################################################################
@@ -111,6 +111,7 @@ BuildRequires: alsa-lib-devel
 BuildRequires: which
 BuildRequires: zlib-devel
 BuildRequires: e2fsprogs-devel
+BuildRequires: libtheora-devel
 BuildRequires: erlang
 Requires: alsa-lib
 Requires: libogg
@@ -124,12 +125,10 @@ Requires: openldap
 Requires: db4
 Requires: gdbm
 Requires: zlib
-Requires: erlang
 Requires: libtiff
-Requires: libjpeg
-Requires: erlang
-Requires: zlib
 Requires: python
+Requires: erlang
+Requires: libtheora
 
 %if %{?suse_version:1}0
 %if 0%{?suse_version} > 910
@@ -284,13 +283,13 @@ Group:          System/LibrariesRequires:        %{name} = %{version}-%{release}
 German language phrases module and directory structure for say module and voicemail
 
 
-%package openzap
+%package freetdm
 Summary:	Provides a unified interface to hardware TDM cards and ss7 stacks for FreeSWITCH
 Group:		System/Libraries
 Requires:        %{name} = %{version}-%{release}
 
-%description openzap
-OpenZAP
+%description freetdm
+
 
 ###############################################################################################################################
 #
@@ -300,17 +299,17 @@ OpenZAP
 
 %prep
 %setup -b0 -q
-#cp %{SOURCE1} libs/
-#cp %{SOURCE2} libs/
-#cp %{SOURCE3} libs/
-#cp %{SOURCE4} libs/
-#cp %{SOURCE5} libs/
-#cp %{SOURCE6} libs/
-#cp %{SOURCE7} libs/
-#cp %{SOURCE8} libs/
-#cp %{SOURCE9} libs/
-#cp %{SOURCE10} libs/
-#cp %{SOURCE11} libs/
+cp %{SOURCE1} libs/
+cp %{SOURCE2} libs/
+cp %{SOURCE3} libs/
+cp %{SOURCE4} libs/
+cp %{SOURCE5} libs/
+cp %{SOURCE6} libs/
+cp %{SOURCE7} libs/
+cp %{SOURCE8} libs/
+cp %{SOURCE9} libs/
+cp %{SOURCE10} libs/
+cp %{SOURCE11} libs/
 
 ###############################################################################################################################
 #
@@ -337,12 +336,14 @@ export QA_RPATHS=$[ 0x0001|0x0002 ]
 #							Application Modules
 #
 ###############################################################################################################################
-APPLICATION_MODULES_AE="applications/mod_avmd  applications/mod_commands applications/mod_conference applications/mod_db applications/mod_directory applications/mod_distributor applications/mod_dptools applications/mod_easyroute applications/mod_enum applications/mod_esf applications/mod_expr"
-
-APPLICATION_MODULES_FM="applications/mod_fifo applications/mod_fsv applications/mod_hash applications/mod_lcr applications/mod_limit"
- # applications/mod_memcache
-APPLICATION_MODULES_NY="applications/mod_redis applications/mod_rss applications/mod_spandsp applications/mod_stress applications/mod_spy " # applications/mod_soundtouch 
-
+APPLICATION_MODULES_AE="applications/mod_avmd applications/mod_callcenter applications/mod_cidlookup applications/mod_cluechoo \
+                        applications/mod_commands applications/mod_conference applications/mod_db applications/mod_directory \
+			applications/mod_distributor applications/mod_dptools applications/mod_easyroute applications/mod_enum \
+			applications/mod_esf applications/mod_expr"
+APPLICATION_MODULES_FM="applications/mod_fifo applications/mod_fsv applications/mod_hash applications/mod_lcr applications/mod_limit \
+                        applications/mod_memcache"
+APPLICATION_MODULES_NY="application/mod_nibblebill applications/mod_redis applications/mod_rss applications/mod_snom \
+			applications/mod_soundtouch applications/mod_spandsp applications/mod_spy applications/mod_stress"
 APPLICATION_MODULES_VZ="applications/mod_valet_parking applications/mod_vmd applications/mod_voicemail"
 
 APPLICATIONS_MODULES="$APPLICATION_MODULES_AE $APPLICATION_MODULES_FM $APPLICATION_MODULES_NY $APPLICATION_MODULES_VZ"
@@ -351,13 +352,14 @@ APPLICATIONS_MODULES="$APPLICATION_MODULES_AE $APPLICATION_MODULES_FM $APPLICATI
 #			Automatic Speech Recognition and Text To Speech Modules
 #
 ###############################################################################################################################
-ASR_TTS_MODULES="asr_tts/mod_unimrcp" #asr_tts/mod_pocketsphinx asr_tts/mod_flite 
+ASR_TTS_MODULES="asr_tts/mod_flite asr_tts/mod_pocketsphinx asr_tts/mod_unimrcp"
 ###############################################################################################################################
 #
 #							Codecs
 #
 ###############################################################################################################################
-CODECS_MODULES="codecs/mod_ilbc codecs/mod_h26x codecs/mod_speex codecs/mod_celt codecs/mod_siren codecs/mod_bv"
+CODECS_MODULES="codecs/mod_bv codecs/mod_h26x codecs/mod_speex codecs/mod_celt codecs/mod_codec2 codecs/mod_ilbc codecs/mod_mp4v \
+                codecs/mod_silk codecs/mod_siren codecs/mod_theora"
 ###############################################################################################################################
 #
 #						Dialplan Modules
@@ -375,20 +377,23 @@ DIRECTORIES_MODULES=""
 #							Endpoints
 #
 ###############################################################################################################################
-ENDPOINTS_MODULES="endpoints/mod_dingaling endpoints/mod_sofia ../../libs/openzap/mod_openzap endpoints/mod_loopback endpoints/mod_portaudio"
+ENDPOINTS_MODULES="endpoints/mod_dingaling endpoints/mod_loopback ../../libs/freetdm/mod_freetdm endpoints/mod_portaudio \
+                   endpoints/mod_sofia"
+
 ###############################################################################################################################
 #
 #							Event Handlers
 #
 ###############################################################################################################################
-EVENT_HANDLERS_MODULES="event_handlers/mod_event_multicast event_handlers/mod_event_socket event_handlers/mod_cdr_csv event_handlers/mod_erlang_event"
+EVENT_HANDLERS_MODULES="event_handlers/mod_cdr_csv event_handlers/mod_event_socket event_handlers/mod_event_multicast \
+                        event_handlers/mod_erlang_event"
 ###############################################################################################################################
 #
 #							File and Audio Format Handlers
 #
 ###############################################################################################################################
-FORMATS_MODULES="formats/mod_local_stream formats/mod_native_file formats/mod_sndfile formats/mod_tone_stream formats/mod_file_string formats/mod_portaudio_stream" 
-# formats/mod_shout 
+FORMATS_MODULES="formats/mod_file_string formats/mod_local_stream formats/mod_native_file formats/mod_portaudio_stream  \
+                 formats/mod_shout formats/mod_sndfile formats/mod_tone_stream"
 ###############################################################################################################################
 #
 #							Embedded Languages
@@ -512,7 +517,7 @@ fi
 %post
 %{?run_ldconfig:%run_ldconfig}
 # Make FHS2.0 happy
-%{__mkdir} -p /etc/opt
+#%{__mkdir} -p /etc/opt
 # ERROR: parent directory of /etc%{prefix} doesnt exist and probably not what was intended
 #%{__ln_s} -f %{prefix}/conf /etc%{prefix}
 
@@ -685,9 +690,9 @@ fi
 #							Grammar Files
 #
 ###############################################################################################################################
-#%config(noreplace) %attr(0640, freeswitch, daemon) %{prefix}/grammar/default.dic
-#%config(noreplace) %attr(0640, freeswitch, daemon) %{prefix}/grammar/model/communicator/*
-#%config(noreplace) %attr(0640, freeswitch, daemon) %{prefix}/grammar/model/wsj1/*
+%config(noreplace) %attr(0640, freeswitch, daemon) %{prefix}/grammar/default.dic
+%config(noreplace) %attr(0640, freeswitch, daemon) %{prefix}/grammar/model/communicator/*
+%config(noreplace) %attr(0640, freeswitch, daemon) %{prefix}/grammar/model/wsj1/*
 ###############################################################################################################################
 #
 #							Other Fíles
@@ -720,8 +725,12 @@ fi
 %{prefix}/mod/mod_amrwb.so*
 %{prefix}/mod/mod_avmd.so*
 %{prefix}/mod/mod_bv.so*
+%{prefix}/mod/mod_callcenter.so*
 %{prefix}/mod/mod_cdr_csv.so*
 %{prefix}/mod/mod_celt.so*
+%{prefix}/mod/mod_cidlookup.so*
+%{prefix}/mod/mod_cluechoo.so*
+%{prefix}/mod/mod_codec2.so*
 %{prefix}/mod/mod_console.so*
 %{prefix}/mod/mod_commands.so*
 %{prefix}/mod/mod_conference.so*
@@ -742,7 +751,7 @@ fi
 %{prefix}/mod/mod_expr.so*
 %{prefix}/mod/mod_fifo.so*
 %{prefix}/mod/mod_file_string.so*
-#%{prefix}/mod/mod_flite.so*
+%{prefix}/mod/mod_flite.so*
 %{prefix}/mod/mod_fsv.so*
 %{prefix}/mod/mod_hash.so*
 %{prefix}/mod/mod_h26x.so*
@@ -752,23 +761,27 @@ fi
 %{prefix}/mod/mod_local_stream.so*
 %{prefix}/mod/mod_logfile.so*
 %{prefix}/mod/mod_loopback.so*
-#%{prefix}/mod/mod_memcache.so*
+%{prefix}/mod/mod_memcache.so*
+%{prefix}/mod/mod_mp4v.so*
 %{prefix}/mod/mod_native_file.so*
-#%{prefix}/mod/mod_pocketsphinx.so*
+%{prefix}/mod/mod_pocketsphinx.so*
 %{prefix}/mod/mod_portaudio.so*
 %{prefix}/mod/mod_portaudio_stream.so*
 %{prefix}/mod/mod_redis.so*
 %{prefix}/mod/mod_rss.so*
-#%{prefix}/mod/mod_shout.so*
+%{prefix}/mod/mod_shout.so*
+%{prefix}/mod/mod_silk.so*
 %{prefix}/mod/mod_siren.so*
 %{prefix}/mod/mod_sndfile.so*
+%{prefix}/mod/mod_snom.so*
 %{prefix}/mod/mod_sofia.so*
-#%{prefix}/mod/mod_soundtouch.so*
+%{prefix}/mod/mod_soundtouch.so*
 %{prefix}/mod/mod_spandsp.so*
 %{prefix}/mod/mod_speex.so*
 %{prefix}/mod/mod_spy.so*
 %{prefix}/mod/mod_stress.so*
 %{prefix}/mod/mod_syslog.so*
+%{prefix}/mod/mod_theora.so*
 %{prefix}/mod/mod_tone_stream.so*
 %{prefix}/mod/mod_unimrcp.so*
 %{prefix}/mod/mod_valet_parking.so*
@@ -798,17 +811,17 @@ fi
 #				OpenZAP Module for TDM Interaction
 #
 ###############################################################################################################################
-%files openzap
+%files freetdm
 %defattr(-, freeswitch, daemon)
 %config(noreplace) %attr(0640, freeswitch, daemon) %{prefix}/conf/tones.conf
-%config(noreplace) %attr(0640, freeswitch, daemon) %{prefix}/conf/autoload_configs/openzap.conf.xml
+%config(noreplace) %attr(0640, freeswitch, daemon) %{prefix}/conf/autoload_configs/freetdm.conf.xml
 %config(noreplace) %attr(0640, freeswitch, daemon) %{prefix}/conf/pika.conf
-%config(noreplace) %attr(0640, freeswitch, daemon) %{prefix}/conf/openzap.conf
+%config(noreplace) %attr(0640, freeswitch, daemon) %{prefix}/conf/freetdm.conf
 %config(noreplace) %attr(0640, freeswitch, daemon) %{prefix}/conf/wanpipe.conf
 %config(noreplace) %attr(0640, freeswitch, daemon) %{prefix}/conf/zt.conf
-%{prefix}/lib/libopenzap.so*
-%{prefix}/mod/mod_openzap.so*
-%{prefix}/mod/ozmod_*.so*
+%{prefix}/lib/libfreetdm.so*
+%{prefix}/mod/mod_freetdm.so*
+%{prefix}/mod/ftm*.so*
 
 ###############################################################################################################################
 #

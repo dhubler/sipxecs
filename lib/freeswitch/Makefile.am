@@ -17,20 +17,27 @@ G723_RPM = $(DEST_RPM)/sipx-freeswitch-codec-passthru-g723_1-$(VERSION)-$(RELEAS
 G729_RPM = $(DEST_RPM)/sipx-freeswitch-codec-passthru-g729-$(VERSION)-$(RELEASE).@RPM_TARGET_ARCH@.rpm
 EN_RPM = $(DEST_RPM)/sipx-freeswitch-lang-en-$(VERSION)-$(RELEASE).@RPM_TARGET_ARCH@.rpm
 DE_RPM = $(DEST_RPM)/sipx-freeswitch-lang-de-$(VERSION)-$(RELEASE).@RPM_TARGET_ARCH@.rpm
+FR_RPM = $(DEST_RPM)/sipx-freeswitch-lang-fr-$(VERSION)-$(RELEASE).@RPM_TARGET_ARCH@.rpm
+RU_RPM = $(DEST_RPM)/sipx-freeswitch-lang-ru-$(VERSION)-$(RELEASE).@RPM_TARGET_ARCH@.rpm
 LUA_RPM = $(DEST_RPM)/sipx-freeswitch-lua-$(VERSION)-$(RELEASE).@RPM_TARGET_ARCH@.rpm
-RPMS = $(RPM) $(DEVEL_RPM) $(AMR_RPM) $(AMRWB_RPM) $(G723_RPM) $(G729_RPM) $(EN_RPM) $(DE_RPM) $(LUA_RPM)
+PERL_RPM = $(DEST_RPM)/sipx-freeswitch-perl-$(VERSION)-$(RELEASE).@RPM_TARGET_ARCH@.rpm
+JS_RPM = $(DEST_RPM)/sipx-freeswitch-spidermonkey-$(VERSION)-$(RELEASE).@RPM_TARGET_ARCH@.rpm
+PYTHON_RPM = $(DEST_RPM)/sipx-freeswitch-python-$(VERSION)-$(RELEASE).@RPM_TARGET_ARCH@.rpm
+FREETDM_RPM = $(DEST_RPM)/sipx-freeswitch-freetdm-$(VERSION)-$(RELEASE).@RPM_TARGET_ARCH@.rpm
+RPMS = $(RPM) $(DEVEL_RPM) $(AMR_RPM) $(AMRWB_RPM) $(G723_RPM) $(G729_RPM) $(EN_RPM) $(DE_RPM) $(LUA_RPM) $(FR_RPM) $(RU_RPM) $(JS_RPM) $(PERL_RPM) $(PYTHON_RPM) $(FREETDM_RPM)
 
 all : PRINT_HEADER $(RPMS) PRINT_FOOTER
 
 .PHONY: build-rpms
 build-rpms:
 	pushd @RPMBUILD_TOPDIR@/SOURCES ; \
-	git  clone $(GIT_URL) sipx-freeswitch-$(VERSION) ; \
+	git clone $(GIT_URL) sipx-freeswitch-$(VERSION) ; \
 	cd sipx-freeswitch-$(VERSION) ; \
 	git archive --format tar --prefix sipx-freeswitch-$(VERSION)/ $(GIT_RELEASE)| bzip2 > ../$(SRC_TARBALL) ; \
 	cd .. ; \
 	rm -rf sipx-freeswitch-$(VERSION) ; \
 	popd
+	cp $(SRC_DIR)/*.gz @RPMBUILD_TOPDIR@/SOURCES/
 	cp $(srcdir)/$(SPEC_FILE) @RPMBUILD_TOPDIR@/SPECS/
 	QA_RPATHS=0x0003 rpmbuild -ba \
 	  --define 'VERSION $(VERSION)' \
