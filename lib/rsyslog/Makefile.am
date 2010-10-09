@@ -5,7 +5,9 @@ SRC_DIR = $(srcdir)/src
 SRC_TARBALL = rsyslog-$(VERSION).tar.gz
 SRPM = $(DEST_SRPM)/rsyslog-$(VERSION)-$(RELEASE).src.rpm
 RPMS = $(DEST_RPM)/rsyslog-$(VERSION)-$(RELEASE).@RPM_TARGET_ARCH@.rpm \
-       $(DEST_RPM)/rsyslog-pgsql-$(VERSION)-$(RELEASE).@RPM_TARGET_ARCH@.rpm
+       $(DEST_RPM)/rsyslog-pgsql-$(VERSION)-$(RELEASE).@RPM_TARGET_ARCH@.rpm \
+       $(DEST_RPM)/rsyslog-mysql-$(VERSION)-$(RELEASE).@RPM_TARGET_ARCH@.rpm 
+
 
 SPEC_FILE = rsyslog.spec
 
