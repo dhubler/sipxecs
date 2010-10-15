@@ -28,6 +28,7 @@ BuildRequires: asciidoc
 BuildRequires: docbook-xsl-stylesheets
 %else
 BuildRequires: docbook-style-xsl
+BuildRequires: docbook-style-dsssl
 %endif
 
 Source: %name-%version.tar.gz
