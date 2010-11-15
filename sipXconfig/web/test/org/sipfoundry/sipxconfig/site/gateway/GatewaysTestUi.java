@@ -9,15 +9,6 @@
  */
 package org.sipfoundry.sipxconfig.site.gateway;
 
-import java.util.Arrays;
-
-import junit.framework.Test;
-import net.sourceforge.jwebunit.html.Table;
-import net.sourceforge.jwebunit.junit.WebTestCase;
-import net.sourceforge.jwebunit.junit.WebTester;
-import org.sipfoundry.sipxconfig.site.SiteTestHelper;
-import org.sipfoundry.sipxconfig.site.branch.BranchesPageTestUi;
-
 import static org.sipfoundry.sipxconfig.site.SiteTestHelper.assertNoException;
 import static org.sipfoundry.sipxconfig.site.SiteTestHelper.assertNoUserError;
 import static org.sipfoundry.sipxconfig.site.SiteTestHelper.assertUserError;
@@ -27,6 +18,16 @@ import static org.sipfoundry.sipxconfig.site.SiteTestHelper.getColumnCount;
 import static org.sipfoundry.sipxconfig.site.SiteTestHelper.home;
 import static org.sipfoundry.sipxconfig.site.SiteTestHelper.selectRow;
 import static org.sipfoundry.sipxconfig.site.SiteTestHelper.webTestSuite;
+
+import java.util.Arrays;
+
+import junit.framework.Test;
+import net.sourceforge.jwebunit.html.Table;
+import net.sourceforge.jwebunit.junit.WebTestCase;
+import net.sourceforge.jwebunit.junit.WebTester;
+
+import org.sipfoundry.sipxconfig.site.SiteTestHelper;
+import org.sipfoundry.sipxconfig.site.branch.BranchesPageTestUi;
 
 /**
  * GatewaysTestUi
@@ -45,8 +46,15 @@ public class GatewaysTestUi extends WebTestCase {
         getTestContext().setBaseUrl(getBaseUrl());
         home(tester);
         SiteTestHelper.setScriptingEnabled(tester, false);
+        clickLink("link:seedBridgeSbc");
         clickLink("resetDialPlans");
         clickLink("resetBranches");
+    }
+
+    @Override
+    public void tearDown() {
+        SiteTestHelper.home(tester);
+        clickLink("link:deleteBridgeSbc");
     }
 
     public void testLinks() {
@@ -143,32 +151,34 @@ public class GatewaysTestUi extends WebTestCase {
 
         for (String gatewayType : nonRouteGateways) {
             selectOption("selectGatewayModel", gatewayType);
-            assertElementNotPresent("sbcDeviceSelect");
+            assertElementNotPresent("gateway:useSipXBridge");
             clickButton("form:cancel");
         }
 
         selectOption("selectGatewayModel", "SIP trunk");
         setTextField("gateway:name", "SipTrunkRouteInit");
-        assertElementPresent("sbcDeviceSelect");
+        assertElementPresent("gateway:useSipXBridge");
+        assertCheckboxSelected("gateway:useSipXBridge");
+        assertElementNotPresent("gateway:outboundAddress");
+        assertElementNotPresent("gateway:outboundPort");
         setTextField("gateway:address", "1.2.3.4");
         clickButton("form:ok");
         assertNoUserError(tester);
     }
 
-    /**
-     * Tests that a Direct SIP Trunk gateway has no additional "SBC Route" field on its Configuration tab.
-     */
     public void testDirectSipTrunk() throws Exception {
         tester.setScriptingEnabled(true);
         clickLink("ListGateways");
 
         selectOption("selectGatewayModel", "SIP trunk");
-        assertElementPresent("sbcDeviceSelect");
         setTextField("gateway:name", "DirectSipTrunkTest");
         setTextField("gateway:address", "1.2.3.4");
-        // // FIXME: apply should not be necessary see: XCF-2444
-        clickButton("form:apply");
-        assertElementNotPresent("sbcDeviceSelect");
+        assertElementPresent("gateway:useSipXBridge");
+        uncheckCheckbox("gateway:useSipXBridge");
+
+        assertElementPresent("gateway:useSipXBridge");
+        assertElementPresent("gateway:outboundAddress");
+        assertElementPresent("gateway:outboundPort");
         clickButton("form:ok");
         assertNoUserError(tester);
     }

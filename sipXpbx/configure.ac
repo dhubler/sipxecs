@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 AC_PREREQ(2.57)
-AC_INIT(sipXpbx, 4.3.0, sipx-dev@list.sipfoundry.org) 
+AC_INIT(sipXpbx, 0.0.4.3.2, sipx-dev@list.sipfoundry.org) 
 
 AC_CONFIG_AUX_DIR(config)
 m4_include([config/general.m4])
@@ -13,6 +13,7 @@ SFAC_AUTOMAKE_VERSION([1.6])
 
 AM_CONFIG_HEADER([config.h])
 AC_PROG_LIBTOOL
+AC_PROG_LN_S
 
 # Checks for programs.
 AC_PATH_PROG([BASH], [bash])

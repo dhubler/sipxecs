@@ -27,6 +27,8 @@
 #include <net/SipMessage.h>
 #include <xmlparser/tinyxml.h>
 
+#include "main.h"
+
 // EXTERNAL FUNCTIONS
 // EXTERNAL VARIABLES
 // CONSTANTS
@@ -44,7 +46,9 @@
 const UtlContainableType ResourceListSet::TYPE = "ResourceListSet";
 const int ResourceListSet::sSeqNoIncrement = 4;
 const int ResourceListSet::sSeqNoMask = 0x3FFFFFFC;
-
+// RFC 4235 specifies a maximum of one RLMI notification per second.
+// ::sGapTimeout is an OsTime for the minimum interval allowed by RFC 4235.
+const OsTime ResourceListSet::sGapTimeout(1, 0);
 
 /* //////////////////////////// PUBLIC //////////////////////////////////// */
 
@@ -82,16 +86,16 @@ UtlBoolean ResourceListSet::publishOnTimeout()
    return mPublishOnTimeout;
 }
 
-// Set the gap timeout.
-void ResourceListSet::setGapTimeout()
+// Start the gap timeout.
+void ResourceListSet::startGapTimeout()
 {
-   // RFC 4235 specifies a maximum of one RLMI notification per second.
    // After publishing create a 1 second delay before publishing again.
-   mPublishingTimer.oneshotAfter(OsTime(1,0));
+   mPublishingTimer.oneshotAfter(sGapTimeout);
    OsSysLog::add(FAC_RLS, PRI_DEBUG,
-                 "ResourceListSet::setGapTimeout mPublishingTimer.oneshotAfter(1 sec)");
+                 "ResourceListSet::startGapTimeout "
+                 "mPublishingTimer.oneshotAfter(ResourceListSet::sGapTimeout = 1 sec)");
 
-   // Don't publish on the gap timeout.
+   // Don't publish when the gap timeout ends.
    mPublishOnTimeout = FALSE;
 }
 
@@ -105,7 +109,7 @@ void ResourceListSet::finalize()
    // Make sure the ResourceList's are destroyed so that all
    // references to the ResourceCached's are removed, before
    // destroying the ResourceCache.
-   deleteAllResourceLists();
+   deleteAllResourceLists(false);
 
    // Make sure the publishing timer is stopped before the ResourceListTask
    // is destroyed, because the timer posts messages to ResourceListTask.
@@ -162,17 +166,45 @@ bool ResourceListSet::addResourceList(const char* user,
    return ret;
 }
 
+// Get the information from resource in a resource list specified
+// by its position in the list.
+void ResourceListSet::getResourceInfoAt(const char* user,
+                                        size_t at,
+                                        UtlString& uri,
+                                        UtlString& nameXml,
+                                        UtlString& display_name)
+{
+   // Serialize access to the ResourceListSet.
+   OsLock lock(mSemaphore);
+
+   ResourceList* resourceList = findResourceList(user);
+   if (resourceList)
+   {
+      resourceList->getResourceInfoAt(at, uri, nameXml, display_name);
+   }
+   else
+   {
+      OsSysLog::add(FAC_RLS, PRI_DEBUG,
+                    "ResourceListSet::getResourceInfoAt ResourceList '%s' not found",
+                    user);
+   }
+}
+
 // Delete all resource lists.
-void ResourceListSet::deleteAllResourceLists()
+void ResourceListSet::deleteAllResourceLists(bool abortOnShutdown)
 {
    OsSysLog::add(FAC_RLS, PRI_DEBUG,
-                 "ResourceListSet::deleteAllResourceLists this = %p",
-                 this);
+                 "ResourceListSet::deleteAllResourceLists "
+                 "this = %p, abortOnShutdown = %d",
+                 this, abortOnShutdown);
 
    // Gradually remove elements from the ResourceLists and delete them.
    ResourceList* rl;
    int changeDelay = getResourceListServer()->getChangeDelay();
    do {
+      // Set to true if a ResourceCached was deleted and so we need to delay.
+      bool resource_deleted = false;
+
       {
          // Serialize access to the ResourceListSet.
          OsLock lock(mSemaphore);
@@ -182,7 +214,9 @@ void ResourceListSet::deleteAllResourceLists()
 
          // If one exists, shrink it.
          if (rl) {
-            if (rl->shrink()) {
+            bool list_empty;
+            rl->shrink(list_empty, resource_deleted);
+            if (list_empty) {
                // The ResourceList is empty, and so can be removed and deleted.
                mResourceLists.removeReference(rl);
                delete rl;
@@ -190,36 +224,63 @@ void ResourceListSet::deleteAllResourceLists()
          }
       }
 
-      // Delay to allow the consequent processing to catch up.
-      OsTask::delay(changeDelay);
-   } while (rl);
+      if (resource_deleted)
+      {
+         // Delay to allow the consequent processing to catch up.
+         OsTask::delay(changeDelay);
+      }
+   } while (rl && !gShutdownFlag);
 }
 
-// Deletes a resource list.
-void ResourceListSet::deleteResourcesList(const char* user)
+// Delete a resource list.
+void ResourceListSet::deleteResourceList(const char* user)
 {
    OsSysLog::add(FAC_RLS, PRI_DEBUG,
-                 "ResourceListSet::deleteResourcesList this = %p, user = '%s'",
+                 "ResourceListSet::deleteResourceList this = %p, user = '%s'",
                  this, user);
 
-   // Serialize access to the ResourceListSet.
-   OsLock lock(mSemaphore);
+   // Gradually remove elements from the ResourceList and delete them.
+   ResourceList* rl;
+   int changeDelay = getResourceListServer()->getChangeDelay();
+   do {
+      // Set to true if a ResourceCached was deleted and so we need to delay.
+      bool resource_deleted = false;
 
-   ResourceList*  resourceList = findResourceList(user);
+      {
+         // Serialize access to the ResourceListSet.
+         OsLock lock(mSemaphore);
 
-   resourceList->deleteAllResources();
-   // The ResourceList is empty, and so can be removed and deleted.
-   mResourceLists.removeReference(resourceList);
-   delete resourceList;
+         // Get pointer to the ResourceList.
+         rl = findResourceList(user);
 
+         // If it exists, shrink it.
+         if (rl) {
+            bool list_empty;
+            rl->shrink(list_empty, resource_deleted);
+            if (list_empty) {
+               // The ResourceList is empty, and so can be removed and deleted.
+               mResourceLists.removeReference(rl);
+               delete rl;
+               // Exit the loop now.
+               rl = NULL;
+            }
+         }
+      }
+
+      if (resource_deleted)
+      {
+         // Delay to allow the consequent processing to catch up.
+         OsTask::delay(changeDelay);
+      }
+   } while (rl && !gShutdownFlag);
 }
 
-// Delete all resources from a resource list.
-void ResourceListSet::deleteAllResources(const char* user)
+void ResourceListSet::deleteResourceAt(const char* user,
+                                       size_t at)
 {
    OsSysLog::add(FAC_RLS, PRI_DEBUG,
-                 "ResourceListSet::deleteAllResources this = %p, user = '%s'",
-                 this, user);
+                 "ResourceListSet::deleteResourceAt this = %p, user = '%s', at = %d",
+                 this, user, (int) at);
 
    // Serialize access to the ResourceListSet.
    OsLock lock(mSemaphore);
@@ -227,14 +288,21 @@ void ResourceListSet::deleteAllResources(const char* user)
    ResourceList* resourceList = findResourceList(user);
    if (resourceList)
    {
-      resourceList->deleteAllResources();
+      bool resource_deleted = resourceList->deleteResourceAt(at);
+
+      if (resource_deleted)
+      {
+         // Delay to allow the consequent processing to catch up.
+         OsTask::delay(getResourceListServer()->getChangeDelay());
+      }
+
       OsSysLog::add(FAC_RLS, PRI_DEBUG,
-                    "ResourceListSet::deleteAllResources done");
+                    "ResourceListSet::deleteResourceAt done");
    }
    else
    {
       OsSysLog::add(FAC_RLS, PRI_DEBUG,
-                    "ResourceListSet::deleteAllResources ResourceList '%s' not found",
+                    "ResourceListSet::deleteResourceAt ResourceList '%s' not found",
                     user);
    }
 }
@@ -258,142 +326,68 @@ void ResourceListSet::getAllResourceLists(UtlSList& list)
    }
 }
 
-//! Get a list of the uri-parts of all resource references.
-//  for the user.
-void ResourceListSet::getResourceReferences(const char* user,
-                                            UtlSList& list)
-{
-   OsSysLog::add(FAC_RLS, PRI_DEBUG,
-                 "ResourceListSet::getResourceReferences this = %p, user = '%s'",
-                 this, user);
-
-   // Serialize access to the resource list.
-   OsLock lock(mSemaphore);
-
-   ResourceList* resourceList = findResourceList(user);
-
-   if (resourceList)
-   {
-      resourceList->getAllResourceReferences(list);
-   }
-   else
-   {
-      OsSysLog::add(FAC_RLS, PRI_ERR,
-                    "ResourceListSet::getResourceReferences ResourceList '%s' not found",
-                    user);
-   }
-}
-
 //! Create and add a resource to the resource list.
-//  Returns the generated Resource object.
 bool ResourceListSet::addResource(const char* user,
                                   const char* uri,
                                   const char* nameXml,
                                   const char* display_name,
-                                  const char* previous_uri)
+                                  ssize_t no_check_start,
+                                  ssize_t no_check_end)
 {
    OsSysLog::add(FAC_RLS, PRI_DEBUG,
-                 "ResourceListSet::addResource this = %p, user = '%s', uri = '%s', nameXml = '%s', display_name = '%s'",
-                 this, user, uri, nameXml, display_name);
+                 "ResourceListSet::addResource this = %p, user = '%s', uri = '%s', nameXml = '%s', display_name = '%s', no_check_start = %d, no_check_end = %d",
+                 this, user, uri, nameXml, display_name,
+                 (int) no_check_start, (int) no_check_end);
 
-   // Serialize access to the resource list.
+   // Serialize access to the ResourceListSet.
    OsLock lock(mSemaphore);
 
+   bool resource_added = false;
    ResourceList* resourceList = findResourceList(user);
-   bool ret;
    if (resourceList)
    {
-      ret = resourceList->addResource(uri, nameXml, display_name, previous_uri);
-      if(ret)
+      bool resource_cached_created;
+      resourceList->addResource(uri, nameXml, display_name,
+                                resource_added, resource_cached_created,
+                                no_check_start, no_check_end);
+
+      if (resource_cached_created)
       {
-         OsSysLog::add(FAC_RLS, PRI_DEBUG,
-                       "ResourceListSet::addResource resource added");
+         // Delay to allow the consequent processing to catch up.
+         OsTask::delay(getResourceListServer()->getChangeDelay());
       }
-      else
-      {
-          OsSysLog::add(FAC_RLS, PRI_DEBUG,
-                        "ResourceListSet::addResource resource %s was in ResourceList %s",
-                        uri, user);
-      }
+
+      OsSysLog::add(FAC_RLS, PRI_DEBUG,
+                    "ResourceListSet::addResource resource added");
    }
    else
    {
-      ret = false;
       OsSysLog::add(FAC_RLS, PRI_DEBUG,
                     "ResourceListSet::addResource ResourceList '%s' not found",
                     user);
    }
 
-   return ret;
+   return resource_added;
 }
 
-// Delete a resource based on the uri-part from a resource list.
-void ResourceListSet::deleteResource(const char* user,
-                                     const char* uri)
+// Get the number of resources in a resource list.
+size_t ResourceListSet::getResourceListEntries(const char* user)
 {
-   OsSysLog::add(FAC_RLS, PRI_DEBUG,
-                 "ResourceListSet::deleteResource this = %p, user = '%s', uri = '%s'",
-                 this, user, uri);
-
    // Serialize access to the ResourceListSet.
    OsLock lock(mSemaphore);
 
-   ResourceList* resourceList = findResourceList(user);
+   size_t ret = 0;
 
+   ResourceList* resourceList = findResourceList(user);
    if (resourceList)
    {
-      resourceList->removeResource(uri);
-
-      OsSysLog::add(FAC_RLS, PRI_DEBUG,
-                    "ResourceListSet::deleteResource user = %s, uri = %s",
-                    user, uri);
+      ret = resourceList->entries();
    }
    else
    {
-      OsSysLog::add(FAC_RLS, PRI_ERR,
-                    "ResourceListSet::deleteResource ResourceList '%s' not found",
-                    user);
-   }
-}
-
-//! Checks if this resource is new or changed compared
-//  in the resource list by order and difference in name..
-bool ResourceListSet::resourceChanged(const char* user,
-                                      const char* uri,
-                                      const char* nameXml,
-                                      const char* display_name,
-                                      const char* previous_uri)
-{
-   OsSysLog::add(FAC_RLS, PRI_DEBUG,
-                 "ResourceListSet::resourceChanged this = %p, user = '%s', uri = '%s', nameXml = '%s', display_name = '%s'",
-                 this, user, uri, nameXml, display_name);
-
-   // Serialize access to the resource list.
-   OsLock lock(mSemaphore);
-
-   ResourceList* resourceList = findResourceList(user);
-   bool ret;
-   if (resourceList)
-   {
-      ret = resourceList->resourceChanged(uri, nameXml, display_name, previous_uri);
-      if(ret)
-      {
-         OsSysLog::add(FAC_RLS, PRI_DEBUG,
-                       "ResourceListSet::resourceChanged difference found in resource %s for ResourceList %s with nameXml %s and display name of %s",
-                       uri, user, nameXml, display_name);
-      }
-      else
-      {
-          OsSysLog::add(FAC_RLS, PRI_DEBUG,
-                        "ResourceListSet::resourceChanged no difference found in resource %s for ResourceList %s",
-                        uri, user);
-      }
-   }
-   else
-   {
-      ret = false;
-      OsSysLog::add(FAC_RLS, PRI_ERR,
-                    "ResourceListSet::resourceChanged ResourceList '%s' not found",
+      OsSysLog::add(FAC_RLS, PRI_WARNING,
+                    "ResourceListSet::getResourceListEntries "
+                    "user = '%s' could not be found",
                     user);
    }
 
@@ -467,7 +461,7 @@ void ResourceListSet::subscriptionEventCallbackSync(
                  earlyDialogHandle->data(), dialogHandle->data(), newState,
                  subscriptionState->data());
 
-   // Serialize access to the resource list set.
+   // Serialize access to the ResourceListSet.
    OsLock lock(mSemaphore);
 
    // Look up the ResourceSubscriptionReceiver to notify based on the
@@ -543,7 +537,7 @@ void ResourceListSet::notifyEventCallbackSync(const UtlString* dialogHandle,
                  "ResourceListSet::notifyEventCallbackSync dialogHandle = '%s'",
                  dialogHandle->data());
 
-   // Serialize access to the resource list set.
+   // Serialize access to the ResourceListSet.
    OsLock lock(mSemaphore);
 
    // Look up the ResourceNotifyReceiver to notify based on the dialogHandle.
@@ -695,7 +689,7 @@ UtlBoolean ResourceListSet::publishingSuspended()
 // Suspend the effect of publish().
 void ResourceListSet::suspendPublishing()
 {
-   // Serialize access to the resource list set.
+   // Serialize access to the ResourceListSet.
    OsLock lock(mSemaphore);
 
    // Increment mSuspendPublishingCount.
@@ -718,7 +712,7 @@ void ResourceListSet::suspendPublishing()
 // Resume the effect of publish().
 void ResourceListSet::resumePublishing()
 {
-   // Serialize access to the resource list set.
+   // Serialize access to the ResourceListSet.
    OsLock lock(mSemaphore);
 
    // Decrement mSuspendPublishingCount if > 0.
@@ -770,7 +764,7 @@ void ResourceListSet::schedulePublishing()
          {
             // Calculate the amount of time before the gap timer expires (in seconds and microseconds).
             OsTimer::Time timeDelta = tmrExpiresAt - OsTimer::now();
-            OsTime pubGap(timeDelta/1000000, timeDelta%1000000);
+            OsTime pubGap(timeDelta / 1000000, timeDelta % 1000000);
 
             // If the remaining gap timeout is less than the pubDelay
             // then we need to wait for pubDelay before publishing.
@@ -803,7 +797,7 @@ void ResourceListSet::publish()
                  "ResourceListSet::publish this = %p",
                  this);
 
-   // Serialize access to the resource list set.
+   // Serialize access to the ResourceListSet.
    OsLock lock(mSemaphore);
 
    // If publishing has been suspended, do nothing --
@@ -852,7 +846,7 @@ void ResourceListSet::splitUserData(int userData,
 // Retrieve an entry from mEventMap and delete it.
 UtlContainable* ResourceListSet::retrieveObjectBySeqNoAndDeleteMapping(int seqNo)
 {
-   // Serialize access to the resource list set.
+   // Serialize access to the ResourceListSet.
    OsLock lock(mSemaphore);
 
    // Search for and possibly delete seqNo.
@@ -919,7 +913,7 @@ void ResourceListSet::deleteResourceSeqNoMapping(int seqNo)
 // Dump the object's internal state.
 void ResourceListSet::dumpState()
 {
-   // Serialize access to the resource list set.
+   // Serialize access to the ResourceListSet.
    OsLock lock(mSemaphore);
 
    // indented 2

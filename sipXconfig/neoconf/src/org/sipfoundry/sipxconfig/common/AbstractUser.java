@@ -37,6 +37,7 @@ import org.sipfoundry.sipxconfig.service.SipxImbotService;
 import org.sipfoundry.sipxconfig.setting.BeanWithGroups;
 import org.sipfoundry.sipxconfig.setting.Group;
 import org.sipfoundry.sipxconfig.setting.Setting;
+import org.sipfoundry.sipxconfig.setting.SettingEntry;
 
 import static org.apache.commons.lang.StringUtils.EMPTY;
 import static org.apache.commons.lang.StringUtils.defaultString;
@@ -64,6 +65,9 @@ public abstract class AbstractUser extends BeanWithGroups implements NamedObject
     public static final String MOH_AUDIO_SOURCE_SETTING = "moh/audio-source";
     public static final String FAX_EXTENSION_PREFIX = "~~ff~";
     public static final String EMPTY_STRING = "";
+    public static final String FAX_EXTENSION_SETTING = "voicemail/fax/extension";
+    public static final String DID_SETTING = "voicemail/fax/did";
+    public static final String CALLFWD_TIMER = "callfwd/timer";
 
 
     public static enum MohAudioSource {
@@ -331,6 +335,11 @@ public abstract class AbstractUser extends BeanWithGroups implements NamedObject
     }
 
     @Override
+    public void initialize() {
+        addDefaultBeanSettingHandler(new AbstractUserDefaults(m_permissionManager));
+    }
+
+    @Override
     protected Setting loadSettings() {
         if (m_permissionManager != null) {
             return m_permissionManager.getPermissionModel();
@@ -353,10 +362,15 @@ public abstract class AbstractUser extends BeanWithGroups implements NamedObject
 
         // add fax extension aliases
         String faxExtension = getFaxExtension();
+        String faxDid = getFaxDid();
         if (!faxExtension.isEmpty()) {
             String faxContactUri = SipUri.format(getDisplayName(), FAX_EXTENSION_PREFIX + getUserName(), domainName);
             mappings.add(getAliasMapping(faxExtension, faxContactUri, domainName, true));
+            if (!faxDid.isEmpty()) {
+                mappings.add(getAliasMapping(faxDid, faxContactUri, domainName, true));
+            }
         }
+
         return mappings;
     }
 
@@ -445,9 +459,23 @@ public abstract class AbstractUser extends BeanWithGroups implements NamedObject
     }
 
     public String getFaxExtension() {
-        Setting setting = null == getSettings() ? null : getSettings().getSetting("voicemail/fax/extension");
+        Setting setting = null == getSettings() ? null : getSettings().getSetting(FAX_EXTENSION_SETTING);
         return null == setting ? EMPTY_STRING : (setting.getTypedValue() == null ? EMPTY_STRING : (String) setting
                 .getTypedValue());
+    }
+
+    public void setFaxExtension(String faxExtension) {
+        setSettingValue(FAX_EXTENSION_SETTING, faxExtension);
+    }
+
+    public String getFaxDid() {
+        Setting setting = null == getSettings() ? null : getSettings().getSetting(DID_SETTING);
+        return null == setting ? EMPTY_STRING : (setting.getTypedValue() == null ? EMPTY_STRING : (String) setting
+                .getTypedValue());
+    }
+
+    public void setFaxDid(String did) {
+        setSettingValue(DID_SETTING, did);
     }
 
     public boolean isSupervisor() {
@@ -560,8 +588,9 @@ public abstract class AbstractUser extends BeanWithGroups implements NamedObject
     }
 
     /**
-     * Need a getter method to return created address book entry in order to
-     * dinamically pass address book entry attributes
+     * Need a getter method to return created address book entry in order to dinamically pass
+     * address book entry attributes
+     *
      * @return
      */
     public AddressBookEntry getCreatedAddressBookEntry() {
@@ -651,6 +680,7 @@ public abstract class AbstractUser extends BeanWithGroups implements NamedObject
 
         return result;
     }
+
     /**
      * Determines if the passed group is available
      */
@@ -664,4 +694,16 @@ public abstract class AbstractUser extends BeanWithGroups implements NamedObject
         }
     }
 
+    public static class AbstractUserDefaults {
+        private final PermissionManager m_permissionManager;
+
+        public AbstractUserDefaults(PermissionManager permissionManager) {
+            m_permissionManager = permissionManager;
+        }
+
+        @SettingEntry(path = CALLFWD_TIMER)
+        public String getDefaultInitDelay() {
+            return m_permissionManager.getDefaultInitDelay();
+        }
+    }
 }

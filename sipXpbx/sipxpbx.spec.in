@@ -207,6 +207,8 @@ rm -rf $RPM_BUILD_ROOT
 %config(noreplace) %attr(755,root,@SIPXPBXGROUP@) %{_datadir}/www/doc/retrieve-update-log.cgi
 %config(noreplace) %attr(755,root,@SIPXPBXGROUP@) %{_datadir}/www/doc/retrieve-error-log.cgi
 %config(noreplace) %attr(755,@SIPXPBXUSER@,@SIPXPBXGROUP@) %{_datadir}/www/doc/aa_vxml
+%dir %attr(755,root,@SIPXPBXGROUP@) %{_datadir}/www/doc/stdprompts_en
+%{_datadir}/www/doc/stdprompts_en/*
 %config(noreplace) %attr(755,root,@SIPXPBXGROUP@) %{_datadir}/www/doc/stdprompts
 %config(noreplace) %attr(755,@SIPXPBXUSER@,@SIPXPBXGROUP@) %{_datadir}/www/doc/vm_vxml
 
@@ -256,6 +258,18 @@ sipx-sendmail-configure %{buildno}
 
 # If this is an upgrade from 3.10, need to setup the SSL db correctly
 %{_bindir}/ssl-cert/upgrade-cert.sh >> %{_localstatedir}/log/sipxpbx/upgrade-cert.log 2>&1
+
+# stdprompts should be a symlink now. move aside existing prompts link to stdprompts_en
+%define stdpromptsdir %{_datadir}/www/doc/stdprompts
+if [ -L %{stdpromptsdir}.rpmnew ] && [ -d %{stdpromptsdir} ]; then
+   mv %{stdpromptsdir} %{stdpromptsdir}.old
+   mv %{stdpromptsdir}.rpmnew %{stdpromptsdir}
+   # rpm only installs new files into _en, so move over all the old ones that haven't
+   # been updated
+   for d in . conf music music/8000; do \
+     mv -u %{stdpromptsdir}.old/$d/*.wav %{stdpromptsdir}_en/$d; \
+   done
+fi
 
 %preun
 # see http://fedoraproject.org/wiki/Packaging/ScriptletSnippets

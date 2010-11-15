@@ -25,7 +25,8 @@ import gov.nist.javax.sip.message.MessageExt;
 import gov.nist.javax.sip.message.MultipartMimeContent;
 import gov.nist.javax.sip.message.RequestExt;
 import gov.nist.javax.sip.message.SIPResponse;
-
+import gov.nist.javax.sip.message.SIPRequest;
+ 
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -60,6 +61,7 @@ import javax.sip.Transaction;
 import javax.sip.address.Address;
 import javax.sip.address.Hop;
 import javax.sip.address.SipURI;
+import javax.sip.address.URI;
 import javax.sip.header.AllowHeader;
 import javax.sip.header.CSeqHeader;
 import javax.sip.header.CallIdHeader;
@@ -275,13 +277,66 @@ class SipUtilities {
 	 */
 	static ContactHeader createContactHeader(SipProvider provider,
 			ItspAccountInfo itspAccount, String user, Transaction transaction) {
+		String target = null;
+		try
+		{
+		  ServerTransaction peerSt = ((ServerTransaction)transaction); 
+		  if (peerSt != null)
+		  {
+		      SIPRequest request = ((SIPRequest)transaction.getRequest());
+		      if (request != null)
+		      {
+		          target = request.getViaHost();
+		      }
+		  }
+		}catch (Exception ex) {};
+
 		try {
 			/*
 			 * If we are creating a contact header for a provider that is facing
 			 * the WAN and if global addressing is used, then place the bridge
 			 * public address in the contact header.
 			 */
-			if (provider != Gateway.getLanProvider()
+			if (target != null && target.equals(Gateway.getLocalAddress())
+		            && provider != Gateway.getLanProvider())
+		    {
+		        /*
+		         * This came from a local target but passed through the Wan provider.
+		         * This could only mean that this is a redirected request coming from the proxy
+		         *
+                 * Creating contact header for LAN bound request.
+                 */
+                if (user == null) {
+                    user = Gateway.SIPXBRIDGE_USER;
+                }
+                
+                String transport = Gateway.getSipxProxyTransport();
+                
+                try {
+                    if ( transport == null ) {
+                        logger.warn("Null transport specified -- assuming UDP");
+                        transport = "udp";
+                    }
+                    ListeningPoint lp = provider.getListeningPoint(transport);
+                    String ipAddress = lp.getIPAddress();
+                    int port = lp.getPort();
+                    SipURI sipUri = ProtocolObjects.addressFactory.createSipURI(user,
+                            ipAddress);
+                    sipUri.setPort(port);
+                    if (transport.equalsIgnoreCase("tls")) {
+                        sipUri.setTransportParam(transport);
+                    }
+                    Address address = ProtocolObjects.addressFactory
+                            .createAddress(sipUri);
+                    ContactHeader ch = ProtocolObjects.headerFactory
+                            .createContactHeader(address);
+                    return ch;
+                } catch (Exception ex) {
+                    throw new SipXbridgeException(
+                            "Unexpected error creating contact header", ex);
+                }
+		    }
+			else if (provider != Gateway.getLanProvider()
 					&& (itspAccount != null && !itspAccount
 							.isGlobalAddressingUsed())
 					|| Gateway.getGlobalAddress() == null) {
@@ -292,11 +347,18 @@ class SipUtilities {
 				    user = Gateway.SIPXBRIDGE_USER;
 				}
 				ListeningPoint lp = provider.getListeningPoint(transport);
-				String ipAddress = lp.getIPAddress();
-				int port = lp.getPort();
+				String ipAddress = lp.getIPAddress();				
+				//				
+				// EXPERIMENTAL.  Point contact address to the proxy port
+                int port = lp.getPort();
+                if (Gateway.getBridgeConfiguration().isEnableBridgeProxyRelay())
+                    port = Gateway.getBridgeConfiguration().getSipxProxyPort();
+				//
 				SipURI sipUri = ProtocolObjects.addressFactory.createSipURI(
 						user, ipAddress);
-				sipUri.setPort(port);
+
+                if (port > 0)
+                    sipUri.setPort(port);
 				sipUri.setTransportParam(transport);
 				Address address = ProtocolObjects.addressFactory
 						.createAddress(sipUri);
@@ -336,7 +398,14 @@ class SipUtilities {
 					transport = itspAccount.getOutboundTransport();
 				}
 
-				sipUri.setPort(Gateway.getGlobalPort(transport));
+				//				
+				// EXPERIMENTAL.  Point contact address to the proxy port				
+				int port = Gateway.getGlobalPort(transport);
+                if (Gateway.getBridgeConfiguration().isEnableBridgeProxyRelay())
+                    port = Gateway.getBridgeConfiguration().getSipxProxyPort();
+				//
+                if (port > 0)
+                    sipUri.setPort(port);
 				sipUri.setTransportParam(transport);
 				Address address = ProtocolObjects.addressFactory
 						.createAddress(sipUri);
@@ -395,6 +464,21 @@ class SipUtilities {
 		if (sipProvider == null) {
 			throw new SipException("Cannot find provider for ITSP ");
 		}
+
+
+		if (itspAccount.getHopToRegistrar() == null && Gateway.getBridgeConfiguration().isEnableBridgeProxyRelay())
+		{
+			//
+			//	!!EXPERIMENTAL!!
+			//	Always route registrations through the proxy
+			//
+			HopImpl hop = new HopImpl(Gateway.getLocalAddress(),
+						Gateway.getBridgeConfiguration().getSipxProxyPort(),
+						"tcp");
+			itspAccount.setHopToRegistrar(hop);
+		}
+
+
 		String registrar = itspAccount.getProxyDomain();
 
 		SipURI requestUri = ProtocolObjects.addressFactory.createSipURI(null,
@@ -503,7 +587,6 @@ class SipUtilities {
 	static Request createDeregistrationRequest(ItspAccountInfo itspAccount)
 			throws SipXbridgeException {
 		try {
-
 			Request request = createRegistrationRequestTemplate(itspAccount,
 					null, 1L);
 			ContactHeader contactHeader = createContactHeader(itspAccount
@@ -677,14 +760,12 @@ class SipUtilities {
 			 * From: header Domain determination.
 			 */
 			String domain = fromDomain;
-			if (passertedIdentityHeader != null || ppreferredIdentityHeader != null) {
-				// ITSP wants to use P-Asserted-Identity or P-Preferred-Identity.
-				// Generate From header from the account identification.
-				if (itspAccount.getUserName() != null
-						&& itspAccount.getDefaultDomain() != null) {
+			Address fromAddress = null;
+			if (itspAccount.isFromItsp()) {				
+			    if (itspAccount.getUserName() != null && itspAccount.getDefaultDomain() != null) {
 					fromUser = itspAccount.getUserName();
 					domain = itspAccount.getDefaultDomain();
-				}
+			    }
 			} else if (fromUser.equalsIgnoreCase("anonymous")
 					&& fromDomain.equalsIgnoreCase("invalid")) {
 				privacyHeader = ((HeaderFactoryExt) ProtocolObjects.headerFactory)
@@ -703,12 +784,11 @@ class SipUtilities {
 				}
 			}
 
-			SipURI fromUri = ProtocolObjects.addressFactory.createSipURI(
-					fromUser, domain);
-			fromHeader = ProtocolObjects.headerFactory.createFromHeader(
-					ProtocolObjects.addressFactory.createAddress(fromUri),
-					new Long(Math.abs(new java.util.Random().nextLong()))
-							.toString());
+           SipURI fromUri = ProtocolObjects.addressFactory.createSipURI(
+                           fromUser, domain);
+           fromHeader = ProtocolObjects.headerFactory.createFromHeader(
+                   ProtocolObjects.addressFactory.createAddress(fromUri),
+				   new Long(Math.abs(new java.util.Random().nextLong())).toString());
 
 			fromHeader.setTag(new Long(Math.abs(new java.util.Random()
 					.nextLong())).toString());
@@ -812,6 +892,7 @@ class SipUtilities {
 			 * Does ITSP accept Lr routing? If so, use that. Otherwise use maddr
 			 * parameter to set the route.
 			 */
+
 			if (itspAccount.isAddLrRoute()) {
 				RouteHeader proxyRoute = SipUtilities.createRouteHeader(hop);
 				request.setHeader(proxyRoute);
@@ -819,6 +900,16 @@ class SipUtilities {
 				requestUri.setMAddrParam(hop.getHost());
 				requestUri.setPort(hop.getPort());
 			}
+
+			/*EXPERIMENTAL: Our first hop for invite is always the proxy */
+            if (Gateway.getBridgeConfiguration().isEnableBridgeProxyRelay())
+            {
+                HopImpl sipXHop = new HopImpl(Gateway.getLocalAddress(),
+                            Gateway.getBridgeConfiguration().getSipxProxyPort(),
+                            "tcp");
+                RouteHeader sipXProxyRoute = SipUtilities.createRouteHeader(sipXHop);
+                request.setHeader(sipXProxyRoute);
+            }
 
 			/*
 			 * By default the UAC always refreshes the session.

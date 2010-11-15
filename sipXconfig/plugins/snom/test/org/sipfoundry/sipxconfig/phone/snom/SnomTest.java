@@ -74,6 +74,25 @@ public class SnomTest extends TestCase {
         assertEquals(expected, location.toString());
     }
 
+    public void testGenerateProfiles_m3() throws Exception {
+        PhoneModel model = new PhoneModel("snom-m3");
+        model.setMaxLineCount(8);
+        model.setModelId("snomM3");
+        model.setLabel("Snom m3");
+        model.setModelDir("snom-m3");
+        model.setProfileTemplate("snom-m3/snom_m3.vm");
+
+        SnomM3Phone phone = prepareM3Phone(model);
+
+        MemoryProfileLocation location = TestHelper.setVelocityProfileGenerator(phone);
+
+        phone.generateProfiles(location);
+        String expected = IOUtils.toString(this.getClass().getResourceAsStream("expected-snom-m3.cfg"));
+
+        assertEquals(expected, location.toString());
+
+    }
+
     private SnomPhone preparePhone(PhoneModel model) {
         User user = new User();
         user.setUserName("juser");
@@ -98,6 +117,22 @@ public class SnomTest extends TestCase {
 
         phone.setModel(model);
         phone.setSpeedDialManager(speedDialManager);
+        PhoneTestDriver.supplyTestData(phone, Arrays.asList(user));
+        return phone;
+    }
+
+    private SnomM3Phone prepareM3Phone(PhoneModel model) {
+        User user = new User();
+        user.setUserName("juser");
+        user.setFirstName("Joe");
+        user.setLastName("User");
+        user.setSipPassword("1234");
+        user.setIsShared(false);
+
+        SnomM3Phone phone = new SnomM3Phone();
+        phone.setSerialNumber("abc123");
+
+        phone.setModel(model);
         PhoneTestDriver.supplyTestData(phone, Arrays.asList(user));
         return phone;
     }
@@ -145,8 +180,11 @@ public class SnomTest extends TestCase {
         model.setModelDir("snom");
         model.setProfileTemplate("snom/snom.vm");
 
+        PhonebookEntry entryWithSpecialChars = new PhonebookEntry();
+        entryWithSpecialChars.setFirstName("&first");
+        entryWithSpecialChars.setLastName("<last>");
         List< ? extends PhonebookEntry> phonebook = Arrays.asList(new DummyEntry("1"), new DummyEntry("3"),
-                new DummyEntry("5"));
+                new DummyEntry("5"), entryWithSpecialChars);
 
         phone.setModel(model);
 
@@ -173,6 +211,7 @@ public class SnomTest extends TestCase {
                 .contains("<item context=\"active\" type=\"none\" index=\"1\">\n			<name>first3 last3</name>\n			<number>number3</number>\n			<search></search>\n		</item>"));
         assertTrue(profile
                 .contains("<item context=\"active\" type=\"none\" index=\"2\">\n			<name>first5 last5</name>\n			<number>number5</number>\n			<search></search>\n		</item>"));
+        assertTrue(profile.contains("<name>&amp;first &lt;last&gt;</name>"));
 
         phoneContextControl.verify();
     }

@@ -31,7 +31,6 @@ BuildRequires: jakarta-commons-collections
 BuildRequires: ruby-devel
 BuildRequires: rubygems
 BuildRequires: rubygem-rake
-BuildRequires: sipx-jasperreports-deps
 BuildRequires: sipxcommons >= %version
 BuildRequires: asciidoc
 %if %{_vendor} == suse
@@ -170,6 +169,7 @@ Summary: Configures/enables MRTG monitoring for %{name}
 Requires: sipxcommserverlib
 Requires: ruby
 Requires: rubygems
+Requires: rubygem-file-tail
 
 %if %{_vendor} == redhat
 # irb is for file-tail gem
@@ -315,6 +315,7 @@ rm -rf $RPM_BUILD_ROOT
 %config(noreplace) %{sipxpbxconf}/hitachi/*
 %config(noreplace) %{sipxpbxconf}/unidata/*
 %config(noreplace) %{sipxpbxconf}/ipDialog/*
+%config(noreplace) %{sipxpbxconf}/isphone/*
 %dir %{sipxpbxconf}/lg-nortel
 %{sipxpbxconf}/lg-nortel/*
 %dir %{sipxpbxconf}/linksys
@@ -323,6 +324,8 @@ rm -rf $RPM_BUILD_ROOT
 %{sipxpbxconf}/polycom/*
 %dir %{sipxpbxconf}/snom
 %{sipxpbxconf}/snom/*
+%dir %{sipxpbxconf}/snom-m3
+%{sipxpbxconf}/snom-m3/*
 %dir %{sipxpbxconf}/counterpath
 %config(noreplace) %{sipxpbxconf}/counterpath/*
 %config(noreplace) %{sipxpbxconf}/mitel/*
@@ -391,6 +394,8 @@ rm -rf $RPM_BUILD_ROOT
 %dir %attr(775,@SIPXPBXUSER@,@SIPXPBXGROUP@) %{reportsdir}
 %config(noreplace) %{reportsdir}/*
 
+%dir %attr(775,@SIPXPBXUSER@,@SIPXPBXGROUP@) %{_localstatedir}/sipxdata/upload
+%dir %attr(775,@SIPXPBXUSER@,@SIPXPBXGROUP@) %{_localstatedir}/sipxdata/backup
 %dir %attr(775,@SIPXPBXUSER@,@SIPXPBXGROUP@) %{_localstatedir}/sipxdata/configserver/web-cert
 %dir %attr(775,@SIPXPBXUSER@,@SIPXPBXGROUP@) %{devicefilesdir}
 
@@ -525,7 +530,7 @@ fi
 %files agent
 %defattr(644,root,root,755)
 %{sipxpbxvarlib}/sipXconfig-agent-*.gem
-%{sipxpbxvarlib}/file-tail-*.gem
+# %{sipxpbxvarlib}/file-tail-*.gem
 
 %attr(755,root,root) %{_bindir}/sipxconfig-agent
 
@@ -534,7 +539,7 @@ fi
 
 %post agent
 gem install --no-rdoc --local %{sipxpbxvarlib}/sipXconfig-agent-*.gem >/dev/null
-gem install --no-rdoc --local %{sipxpbxvarlib}/file-tail-*.gem >/dev/null
+#gem install --no-rdoc --local %{sipxpbxvarlib}/file-tail-*.gem >/dev/null
 
 %if %{_vendor} == redhat
 # change default yum update daemon repo query to once every 24 hours

@@ -9,17 +9,12 @@
  */
 package org.sipfoundry.sipxconfig.phone.counterpath;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
 
 import static java.lang.String.format;
 
@@ -51,16 +46,12 @@ public class CounterpathPhone extends Phone {
     private static final String REG_DISPLAY_NAME = "registration/display_name";
     private static final String REG_PASSWORD = "registration/password";
     private static final String REG_DOMAIN = "registration/domain";
-    private static final String SUBSCRIPTION_AOR =
-        "presence/workgroup/workgroup_subscription_aor";
-    private static final String RESOURCE_LISTS_PATH =
-        "system/resources/system:contact_list_storage:resource_lists_path";
-    private static final String RESOURCE_LISTS_FILENAME =
-        "system/resources/system:contact_list_storage:contacts_server_filename";
-    private static final String RESOURCE_LISTS_USER_NAME =
-        "system/resources/system:contact_list_storage:resource_lists_user_name";
-    private static final String RESOURCE_LISTS_PASSWORD =
-        "system/resources/system:contact_list_storage:resource_lists_password";
+    private static final String SUBSCRIPTION_AOR = "presence/workgroup/workgroup_subscription_aor";
+    private static final String CONTACT_LIST_STORAGE = "system/resources/system:contact_list_storage:";
+    private static final String RESOURCE_LISTS_PATH = CONTACT_LIST_STORAGE + "resource_lists_path";
+    private static final String RESOURCE_LISTS_FILENAME = CONTACT_LIST_STORAGE + "contacts_server_filename";
+    private static final String RESOURCE_LISTS_USER_NAME = CONTACT_LIST_STORAGE + "resource_lists_user_name";
+    private static final String RESOURCE_LISTS_PASSWORD = CONTACT_LIST_STORAGE + "resource_lists_password";
     private static final String VOICEMAIL_URL = "voicemail/voicemail_url";
     private static final String WEBDAV_REALM = ":WebDAV:";
     private static final String AUTH_FILE_NAME = "webdav.users.passwd";
@@ -162,7 +153,7 @@ public class CounterpathPhone extends Phone {
 
         @SettingEntry(path = RESOURCE_LISTS_PATH)
         public String geResourceListsPath() {
-            return "http://" +  getLocationsManager().getPrimaryLocation().getFqdn() + "/webdav";
+            return "http://" + getLocationsManager().getPrimaryLocation().getFqdn() + "/webdav";
         }
 
         @SettingEntry(path = RESOURCE_LISTS_FILENAME)
@@ -326,37 +317,11 @@ public class CounterpathPhone extends Phone {
                 String md5text = DigestUtils.md5Hex(user.getUserName() + WEBDAV_REALM + user.getSipPassword());
 
                 if (passwordFile.exists()) {
-                    Boolean updated = false;
-                    Map<String, String> authDB = new HashMap<String, String>();
-                    BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(passwordFile)));
-                    String strLine;
-                    String[] tokens = new String[3];
-                    while ((strLine = br.readLine()) != null) {
-                        tokens = strLine.split(":");
-                        if ((tokens[0].equals(user.getUserName())) && (!tokens[2].equals(md5text))) {
-                            tokens[2] = md5text;
-                            updated = true;
-                        }
-                        authDB.put(tokens[0], tokens[2]);
-                    }
-                    br.close();
-
                     passwordFile.delete();
-                    BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(
-                            passwordFileNamePath)));
-                    for (Map.Entry<String, String> entry : authDB.entrySet()) {
-                        bw.write(entry.getKey() + WEBDAV_REALM + entry.getValue() + NEW_LINE);
-                    }
-                    if (!updated) {
-                        bw.write(user.getUserName() + WEBDAV_REALM + md5text + NEW_LINE);
-                    }
-                    bw.close();
-                } else {
-                    BufferedWriter bw = new BufferedWriter(
-                            new OutputStreamWriter(new FileOutputStream(passwordFile)));
-                    bw.write(user.getUserName() + WEBDAV_REALM + md5text + NEW_LINE);
-                    bw.close();
                 }
+                BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(passwordFile)));
+                bw.write(user.getUserName() + WEBDAV_REALM + md5text + NEW_LINE);
+                bw.close();
             }
         } catch (IOException ex) {
             ex.printStackTrace();

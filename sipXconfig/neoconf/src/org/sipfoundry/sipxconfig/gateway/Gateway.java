@@ -15,6 +15,7 @@ import java.util.List;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.enums.Enum;
 import org.sipfoundry.sipxconfig.admin.dialplan.sbc.SbcDevice;
+import org.sipfoundry.sipxconfig.branch.Branch;
 import org.sipfoundry.sipxconfig.common.EnumUserType;
 import org.sipfoundry.sipxconfig.common.NamedObject;
 import org.sipfoundry.sipxconfig.common.UserException;
@@ -31,6 +32,10 @@ public class Gateway extends Device implements NamedObject {
     private String m_address;
 
     private int m_addressPort;
+
+    private String m_outboundAddress;
+
+    private int m_outboundPort = 5060;
 
     private AddressTransport m_addressTransport = AddressTransport.NONE;
 
@@ -51,6 +56,11 @@ public class Gateway extends Device implements NamedObject {
     private boolean m_shared = true; // default enabled
 
     private boolean m_enabled = true;
+
+    private Branch m_branch;
+
+    private boolean m_useSipXBridge = true; // default enabled
+
 
     public Gateway() {
     }
@@ -125,6 +135,22 @@ public class Gateway extends Device implements NamedObject {
 
     public void setAddressPort(int port) {
         m_addressPort = port;
+    }
+
+    public String getOutboundAddress() {
+        return m_outboundAddress;
+    }
+
+    public void setOutboundAddress(String address) {
+        m_outboundAddress = address;
+    }
+
+    public int getoutboundPort() {
+        return m_outboundPort;
+    }
+
+    public void setOutboundPort(int port) {
+        m_outboundPort = port;
     }
 
     public String getDescription() {
@@ -221,6 +247,14 @@ public class Gateway extends Device implements NamedObject {
         m_callerAliasInfo = callerAliasInfo;
     }
 
+    public boolean getUseSipXBridge() {
+        return m_useSipXBridge;
+    }
+
+    public void setUseSipXBridge(boolean useSipXbridge) {
+        m_useSipXBridge = useSipXbridge;
+    }
+
     @Override
     protected Setting loadSettings() {
         return null;
@@ -290,4 +324,11 @@ public class Gateway extends Device implements NamedObject {
         m_enabled = enabled;
     }
 
+    public Branch getBranch() {
+        return m_branch;
+    }
+
+    public void setBranch(Branch branch) {
+        m_branch = branch;
+    }
 }

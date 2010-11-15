@@ -46,6 +46,19 @@
 #define MAX_MEDIA_RELAY_INIT_ATTEMPTS        (3)
 #define NAT_RULES_FILENAME_CONFIG_PARAM      ("NATRULES")
 
+#include <sstream>
+#include <iostream>
+#define LOG_ANY(log, priority) \
+{ \
+  std::ostringstream strm; \
+  strm << log; \
+  OsSysLog::add(FAC_SUPERVISOR, priority, strm.str().c_str()); \
+}
+#define LOG_DEBUG(log) LOG_ANY(log, PRI_DEBUG)
+#define LOG_INFO(log) LOG_ANY(log, PRI_INFO)
+#define LOG_ERROR(log) LOG_ANY(log, PRI_ERR)
+#define LOG_CRITICAL(log) LOG_ANY(log, PRI_CRIT)
+
 // CONSTANTS
 // TYPEDEFS
 // FORWARD DECLARATIONS
@@ -541,17 +554,41 @@ void NatTraversalAgent::adjustViaForNatTraversal( SipMessage& message, const cha
 
             message.removeTopVia();
 
+            int sendProtocol = message.getSendProtocol();
             UtlString newVia;
-            char portNumericForm[24];
-            sprintf( portNumericForm, "%d", mNatTraversalRules.getPublicTransportInfo().getPort() );
-            newVia += viaSentProtocol;
-            newVia += SIP_SUBFIELD_SEPARATOR;
-            newVia += mNatTraversalRules.getPublicTransportInfo().getAddress();
-            newVia += ":";
-            newVia += portNumericForm;
-            newVia += ";";
-            newVia += viaParams;
-
+            switch (sendProtocol)
+            {
+                case OsSocket::UDP:
+                case OsSocket::TCP:
+                {
+                    char portNumericForm[24];
+                    sprintf( portNumericForm, "%d", mNatTraversalRules.getPublicTransportInfo().getPort() );
+                    newVia += viaSentProtocol;
+                    newVia += SIP_SUBFIELD_SEPARATOR;
+                    newVia += mNatTraversalRules.getPublicTransportInfo().getAddress();
+                    newVia += ":";
+                    newVia += portNumericForm;
+                    newVia += ";";
+                    newVia += viaParams;
+                }
+                break;
+                case OsSocket::SSL_SOCKET:
+                {
+                    char portNumericForm[24];
+                    sprintf( portNumericForm, "%d", mNatTraversalRules.getSecurePublicTransportInfo().getPort() );
+                    newVia += viaSentProtocol;
+                    newVia += SIP_SUBFIELD_SEPARATOR;
+                    newVia += mNatTraversalRules.getSecurePublicTransportInfo().getAddress();
+                    newVia += ":";
+                    newVia += portNumericForm;
+                    newVia += ";";
+                    newVia += viaParams;
+                }
+                default:
+                    OsSysLog::add(FAC_SIP, PRI_CRIT,
+                                  "NatTraversalAgent::adjustViaForNatTraversal"
+                                  " invalid response send protocol %d", sendProtocol);
+            }
             message.addViaField( newVia, TRUE );
          }
       }
@@ -578,18 +615,35 @@ void NatTraversalAgent::adjustRecordRouteForNatTraversal( SipMessage& message, c
    bool bDestInsideLocalPrivateNetwork = mNatTraversalRules.isPartOfLocalTopology( address, true, true );
    UtlString tmpRecordRoute;
 
+
    UtlString replacementAddress;
    int       replacementPort = 0;
-
+   int sendProtocol = message.getSendProtocol();
    if( bDestInsideLocalPrivateNetwork )
    {
-      replacementAddress = mNatTraversalRules.getProxyTransportInfo().getAddress();
-      replacementPort    = mNatTraversalRules.getProxyTransportInfo().getPort();
+        if (sendProtocol != OsSocket::SSL_SOCKET)
+        {
+            replacementAddress = mNatTraversalRules.getProxyTransportInfo().getAddress();
+            replacementPort    = mNatTraversalRules.getProxyTransportInfo().getPort();
+        }
+        else
+        {
+            replacementAddress = mNatTraversalRules.getSecureProxyTransportInfo().getAddress();
+            replacementPort    = mNatTraversalRules.getSecureProxyTransportInfo().getPort();
+        }
    }
    else
    {
-      replacementAddress = mNatTraversalRules.getPublicTransportInfo().getAddress();
-      replacementPort    = mNatTraversalRules.getPublicTransportInfo().getPort();
+       if (sendProtocol != OsSocket::SSL_SOCKET)
+       {
+           replacementAddress = mNatTraversalRules.getPublicTransportInfo().getAddress();
+           replacementPort    = mNatTraversalRules.getPublicTransportInfo().getPort();
+       }
+       else
+       {
+           replacementAddress = mNatTraversalRules.getSecurePublicTransportInfo().getAddress();
+           replacementPort    = mNatTraversalRules.getSecurePublicTransportInfo().getPort();
+       }
    }
 
    if( !message.isResponse() )
@@ -616,6 +670,19 @@ void NatTraversalAgent::adjustRecordRouteForNatTraversal( SipMessage& message, c
                tmpRecordRouteUrl.toString( newtmpRecordRouteValue );
                message.setRecordRouteField(newtmpRecordRouteValue.data(), 0 );
          }
+         else if( ( tmpRecordRouteHost == mNatTraversalRules.getSecureProxyTransportInfo().getAddress()  &&
+             tmpRecordRoutePort == mNatTraversalRules.getSecureProxyTransportInfo().getPort() )
+             ||
+             ( tmpRecordRouteHost == mNatTraversalRules.getSecurePublicTransportInfo().getAddress() &&
+             tmpRecordRoutePort == mNatTraversalRules.getSecurePublicTransportInfo().getPort() )  )
+         {
+             // the top route points to us, change it for the replacment IP:Port
+             tmpRecordRouteUrl.setHostAddress( replacementAddress );
+             tmpRecordRouteUrl.setHostPort( replacementPort );
+             UtlString newtmpRecordRouteValue;
+             tmpRecordRouteUrl.toString( newtmpRecordRouteValue );
+             message.setRecordRouteField(newtmpRecordRouteValue.data(), 0 );
+         }
       }
    }
    else  // we are dealing with a response
@@ -625,8 +692,10 @@ void NatTraversalAgent::adjustRecordRouteForNatTraversal( SipMessage& message, c
       // There is no point in analyzing the RecordRoute on every pass inside the spiral -
       // only do it if the destination is not us.
 
-      if( address != mNatTraversalRules.getProxyTransportInfo().getAddress() ||
-          port    != mNatTraversalRules.getProxyTransportInfo().getPort() )
+      if( (address != mNatTraversalRules.getProxyTransportInfo().getAddress() ||
+          port    != mNatTraversalRules.getProxyTransportInfo().getPort() ) &&
+          (address != mNatTraversalRules.getSecureProxyTransportInfo().getAddress() ||
+          port    != mNatTraversalRules.getSecureProxyTransportInfo().getPort() ) )
       {
          // SipMessage's interface allows us to get a specific RecordRoute entry within a recordRoute field
          // but does not provide any methods to allow for its modification.  The logic here
@@ -659,12 +728,16 @@ void NatTraversalAgent::adjustRecordRouteForNatTraversal( SipMessage& message, c
             int tmpRecordRoutePort = tmpRecordRouteUrl.getHostPort();
 
             if( !bRecordRouteAdjusted &&
-                ( ( tmpRecordRouteHost == mNatTraversalRules.getProxyTransportInfo().getAddress() &&
+                ((( tmpRecordRouteHost == mNatTraversalRules.getProxyTransportInfo().getAddress() &&
                     tmpRecordRoutePort == mNatTraversalRules.getProxyTransportInfo().getPort() )
                   ||
                   ( tmpRecordRouteHost == mNatTraversalRules.getPublicTransportInfo().getAddress() &&
-                    tmpRecordRoutePort == mNatTraversalRules.getPublicTransportInfo().getPort() )
-                )
+                    tmpRecordRoutePort == mNatTraversalRules.getPublicTransportInfo().getPort() )) ||
+                (( tmpRecordRouteHost == mNatTraversalRules.getSecureProxyTransportInfo().getAddress() &&
+                tmpRecordRoutePort == mNatTraversalRules.getSecureProxyTransportInfo().getPort() )
+                ||
+                ( tmpRecordRouteHost == mNatTraversalRules.getSecurePublicTransportInfo().getAddress() &&
+                tmpRecordRoutePort == mNatTraversalRules.getSecurePublicTransportInfo().getPort() )))
               )
             {
                // we found a Record-Route to us - check if it has already been adjusted and if not,
@@ -710,8 +783,11 @@ void NatTraversalAgent::adjustReferToHeaderForNatTraversal( SipMessage& message,
          // a request is spiraling through the system before being sent to the request target.
          // There is no point in analyzing the REFER on every pass inside the spiral -
          // only do it if the destination is not us.
-         if( address != mNatTraversalRules.getProxyTransportInfo().getAddress() ||
-             port    != mNatTraversalRules.getProxyTransportInfo().getPort() )
+         if( (address != mNatTraversalRules.getProxyTransportInfo().getAddress() ||
+             port    != mNatTraversalRules.getProxyTransportInfo().getPort() ) &&
+             (address != mNatTraversalRules.getSecureProxyTransportInfo().getAddress() ||
+             port    != mNatTraversalRules.getSecureProxyTransportInfo().getPort() )
+            )
          {
             Url referToUrl( referToStr );
             UtlString dummyValue;

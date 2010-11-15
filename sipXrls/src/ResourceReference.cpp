@@ -48,35 +48,11 @@ ResourceReference::ResourceReference(ResourceList* resourceList,
    mNameXml(nameXml),
    mDisplayName(display_name)
 {
-   formatNameXml(mNameXml);
-   OsSysLog::add(FAC_RLS, PRI_DEBUG,
-                 "ResourceReference:: this = %p, resourceList = %p, mUri = '%s', mNameXml = '%s', mDisplayName = '%s'",
-                 this, mResourceList, uri, mNameXml.data(),
-                 mDisplayName.data());
-
-   // Pass the request to the ResourceCache and save the (ResourceCached*)
-   // that it returns.
-   mResourceCached = getResourceListSet()->getResourceCache().
-      addReferenceToResource(this, uri);
-
-   // Publish the change to our containing ResourceList.
-   resourceList->setToBePublished();
 }
 
 // Destructor
 ResourceReference::~ResourceReference()
 {
-   OsSysLog::add(FAC_RLS, PRI_DEBUG,
-                 "ResourceReference::~ this = %p, URI = '%s'",
-                 this, mResourceCached->getUri()->data());
-
-   // Tell the ResourceCache that we no longer have a reference to the
-   // ResourceCached.
-   getResourceListSet()->getResourceCache().
-      deleteReferenceToResource(this, mResourceCached);
-
-   // Publish the change to our containing ResourceList.
-   getResourceList()->setToBePublished();
 }
 
 /* ============================ MANIPULATORS ============================== */
@@ -97,23 +73,8 @@ void ResourceReference::generateBody(UtlString& rlmi,
 
 /* ============================ INQUIRY =================================== */
 
-int ResourceReference::compareDisplayName(const char* newDisplayName)
-{
-   return mDisplayName.compareTo(newDisplayName);
-}
-
-
-int ResourceReference::compareNameXml(const char* newNameXml)
-{
-   UtlString uNameXml(newNameXml);
-
-   formatNameXml(uNameXml);
-
-   return mNameXml.compareTo(uNameXml);
-}
-
 // Dump the object's internal state.
-void ResourceReference::dumpState()
+void ResourceReference::dumpState() const
 {
    // indented 6
 
@@ -134,19 +95,6 @@ UtlContainableType ResourceReference::getContainableType() const
 /* //////////////////////////// PROTECTED ///////////////////////////////// */
 
 /* //////////////////////////// PRIVATE /////////////////////////////////// */
-
-//! Formats the XML fragment containing the <name> elements
-//  for the resource.  It is to make sure the XML fragment
-//  ends with a CR-LF character if it did not end with a
-//  LF character to begin with.
-void ResourceReference::formatNameXml(UtlString& nameXml)
-{
-   // If the name XML is not empty and does not end with LF, add CR-LF.
-   if (!nameXml.isNull() && nameXml(nameXml.length() - 1) != '\n')
-   {
-      nameXml += "\r\n";
-   }
-}
 
 
 /* ============================ FUNCTIONS ================================= */

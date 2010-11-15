@@ -119,10 +119,6 @@ class ResourceListServer : public UtlContainableAtomic
                         /// The XML for the name of the resource list.
                         const char* nameXml);
 
-   //! Delete all resources from a resource list.
-   void deleteAllResources(/// The user-part of the resource list URI.
-                           const char* user);
-
    //! Get a list of the user-parts of all resource lists.
    void getAllResourceLists(/// The list to add the user-parts to.
                             UtlSList& list);
@@ -136,11 +132,9 @@ class ResourceListServer : public UtlContainableAtomic
                     const char* nameXml,
                     /// The display name for consolidated event notices
                     const char* display_name,
-                    //! The uri of the previous node to add after
-                    //  or if this is null then add as head node
-                    //  or if it is not found then add as tail node
-                    const char* previous_uri);
-
+                    /// The range of locations to not check for duplicate URIs.
+                    ssize_t no_check_start = -1,
+                    ssize_t no_check_end = -1);
 
    //! Dump the object's internal state.
    void dumpState();
@@ -207,7 +201,7 @@ class ResourceListServer : public UtlContainableAtomic
    SipUserAgent& getServerUserAgent();
 
    //! Get the bulk add/delete delay (in msec).
-   static int getChangeDelay();
+   int getChangeDelay();
 
    /**
     * Get the ContainableType for a UtlContainable-derived class.
@@ -294,7 +288,34 @@ class ResourceListServer : public UtlContainableAtomic
 
    //! Milliseconds of delay to allow between calls that add or delete resources
    //! to/from ResourceList's when doing bulk updating of ResourceList's.
-   static const int sChangeDelay;
+
+   // Milliseconds of delay to allow between calls that add or delete resources
+   // to/from ResourceList's when doing bulk updating of ResourceList's.
+   // This delay allows the Subscribe Server machinery to keep up with the
+   // requests and messages it has to process, as well as the callback routines
+   // from the Subscribe Server into ResourceListTask.
+   // The delays are organized so that one
+   // OsTask::delay(ResourceListServer::sChangeDelay) is done for each creation/
+   // deletion of a ResourceCached.  (Creation/deletion of a ResourceReference
+   // that is not reflected in changes to the ResourceCached's do not create/
+   // delete subscriptions and so do not burden the Subscribe Server.)
+   // Delays are always done while not holding the mSemaphore lock.
+   // Thus, ResourceCache methods must return information through several layers
+   // of calling methods to ResourceListSet methods, which can do the delays.
+
+   // mChangeDelay is set to one of two values:
+   // sRunningChangeDelay, which is 100 msec, for ordinary operations
+   // sShutdownChangeDelay, which is 10 msec, for use when shutting down
+   // sShutdownChangeDelay can be much shorter because the only subscription
+   // actions are terminating subscriptions to phones.
+   // The design criterion is to allow reasonably fast operations with 2,000
+   // monitored phones.  So during startup (which uses sRunningChangeDelay),
+   // creating the subscriptions takes 200 sec.  During shutdown, subscriptions
+   // are deleted in 20 sec.
+
+   int mChangeDelay;
+   static const int sRunningChangeDelay;
+   static const int sShutdownChangeDelay;
 
    //! Disabled copy constructor
    ResourceListServer(const ResourceListServer& rResourceListServer);
@@ -315,12 +336,6 @@ inline void ResourceListServer::addResourceList(const char* user,
    mResourceListSet.addResourceList(user, userCons, nameXml);
 }
 
-// Delete all resources from a resource list.
-inline void ResourceListServer::deleteAllResources(const char* user)
-{
-   mResourceListSet.deleteAllResources(user);
-}
-
 // Get a list of the user-parts of all resource lists.
 inline void ResourceListServer::getAllResourceLists(UtlSList& list)
 {
@@ -332,9 +347,11 @@ inline void ResourceListServer::addResource(const char* user,
                                             const char* uri,
                                             const char* nameXml,
                                             const char* display_name,
-                                            const char* previous_uri)
+                                            ssize_t no_check_start,
+                                            ssize_t no_check_end)
 {
-   mResourceListSet.addResource(user, uri, nameXml, display_name, previous_uri);
+   mResourceListSet.addResource(user, uri, nameXml, display_name,
+                                no_check_start, no_check_end);
 }
 
 //! Get the event type.
@@ -456,7 +473,7 @@ inline SipUserAgent& ResourceListServer::getServerUserAgent()
 // Get the bulk add/delete delay (in msec).
 inline int ResourceListServer::getChangeDelay()
 {
-   return sChangeDelay;
+   return mChangeDelay;
 }
 
 #endif  // _ResourceListServer_h_

@@ -1,4 +1,8 @@
 ^/\*
 ^ \*
 ^ \*
+<<<<<<< HEAD
 ^ \* Copyright \(C\) 20\d\d .*
+=======
+^ \* Copyright \(C\) 20\d\d.*
+>>>>>>> upstream/master-4.2
