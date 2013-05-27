@@ -82,6 +82,10 @@ public class Cdr implements Serializable {
     private boolean m_callerInternal;
     private String m_calleeRoute;
 
+    private String m_calledNumberAor;
+    private String m_calledNumber;
+    private int m_trunkId;
+
     public String getCalleeAor() {
         return m_calleeAor;
     }
@@ -95,12 +99,37 @@ public class Cdr implements Serializable {
     }
 
     public String getRecipient() {
-        return m_recipient;
+        if(m_calledNumber!=null)
+            return m_calledNumber;
+        else
+            return m_recipient;
     }
 
     public void setCalleeAor(String calleeAor) {
         m_calleeAor = calleeAor;
         m_callee = SipUri.extractUser(calleeAor);
+    }
+
+    public void setMaskedCalleeAor(String calleeAor, int limit, String excluded) {
+        m_calleeAor = calleeAor;
+        m_callee = SipUri.extractUser(calleeAor);
+	if(m_callee.length() > limit) {
+	    m_callee = m_callee.substring(0, m_callee.length()-3)+"***";
+	} else {
+            if(m_callee.length()==limit) {
+                String[] exclude = excluded.split(" ");
+                boolean isExcluded = false;
+                for(String prefix:  exclude) {
+                    if(prefix!="" && m_callee.startsWith(prefix)) {
+                       isExcluded = true;
+                       break;
+                    }
+                }
+                if(!isExcluded) {
+                    m_callee = m_callee.substring(0, m_callee.length()-3)+"***";
+                }
+            }
+        }
     }
 
     public void setCalleeContact(String calleeContact) {
@@ -127,6 +156,28 @@ public class Cdr implements Serializable {
     public void setCallerAor(String callerAor) {
         m_callerAor = callerAor;
         m_caller = SipUri.extractFullUser(callerAor);
+    }
+
+    public void setMaskedCallerAor(String callerAor, int limit, String excluded) {
+        m_callerAor = callerAor;
+        m_caller = SipUri.extractUser(callerAor);
+	if(m_caller.length() > limit) {
+	    m_caller = m_caller.substring(0, m_caller.length()-3)+"***";
+	}else {
+            if(m_caller.length()==limit) {
+                String[] exclude = excluded.split(" ");
+                boolean isExcluded = false;
+                for(String prefix:  exclude) {
+                    if(prefix!="" && m_caller.startsWith(prefix)) {
+                       isExcluded = true;
+                       break;
+                    }
+                }
+                if(!isExcluded) {
+                    m_caller = m_caller.substring(0, m_caller.length()-3)+"***";
+                }
+            }
+        }
     }
 
     public void setCallerContact(String callerContact) {
@@ -291,5 +342,20 @@ public class Cdr implements Serializable {
         return callType;
     }
 
+    public String getCalledNumber() {
+        return m_calledNumber;
+    }
+    
+    public void setCalledNumber(String calledNumber) {
+        m_calledNumberAor = calledNumber;
+        m_calledNumber = SipUri.extractUser(calledNumber);
+    }
 
+    public int getGateway() {
+        return m_trunkId;
+    }
+    
+    public void setGateway(int id) {
+        m_trunkId = id;
+    }
 }
