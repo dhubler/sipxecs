@@ -7,8 +7,7 @@ Step 1. Build makefile.
  ./configure
 
 Step 2. Add yum repository for dependencies
-There are libraries that are not available in common repositories that you'll need to to install. There's a file you can
-add to your system that will allow it to pull dependecies from the sipfoundry 
+There are libraries that are not available in common repositories that you'll need to to install. There's a file you can add to your system that will allow it to pull dependecies from the sipfoundry 
 
   sudo 'make repofile > /etc/yum.repos.d/sipxecs.repo'
 
