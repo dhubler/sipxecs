@@ -31,7 +31,7 @@
 #include <boost/thread.hpp>
 
 // DEFINES
-#define SIP_DEFAULT_RTT     100 // Default T1 value (RFC 3261), in msec.
+#define SIP_DEFAULT_RTT     500 // Default T1 value (RFC 3261), in msec.
                                 // Intended to be estimate of RTT of network.
 #define SIP_MINIMUM_RTT     10  // Minimum T1 value allowed, in msec.
 #define SIP_MAX_PORT_RANGE  10  // If a port is in use and the sip user agent
