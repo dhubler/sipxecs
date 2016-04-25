@@ -56,6 +56,7 @@ import org.springframework.beans.factory.annotation.Required;
  */
 public class GeneralAuditHandler extends AbstractSystemAuditHandler {
 
+    private static final int PERSISTENT_MAP_PROCESSED_FLAG = -100;
     private static final String PROPERTY_DELIMITATOR = " / ";
     private static final String VALUE_DELIMITATOR = "/";
     private UserProfileService m_userProfileService;
@@ -67,9 +68,6 @@ public class GeneralAuditHandler extends AbstractSystemAuditHandler {
      */
     public void handleConfigChange(SystemAuditable auditedEntity, ConfigChangeAction configChangeAction,
             String[] properties, Object[] oldValues, Object[] newValues) throws Exception {
-        if (!isSystemAuditEnabled()) {
-            return;
-        }
         ConfigChange configChange = buildConfigChange(configChangeAction, auditedEntity.getConfigChangeType());
         configChange.setDetails(auditedEntity.getEntityIdentifier());
 
@@ -106,7 +104,7 @@ public class GeneralAuditHandler extends AbstractSystemAuditHandler {
                     String settingDefaultValue = setting.getDefaultValue();
                     if (settingValue != null && settingDefaultValue != null
                             && !settingValue.equals(settingDefaultValue)) {
-                        ConfigChangeValue configChangeValue = new ConfigChangeValue(configChange);
+                        ConfigChangeValue configChangeValue = new ConfigChangeValue();
                         configChangeValue.setPropertyName(setting.getPath());
                         configChangeValue.setValueBefore(settingDefaultValue);
                         configChangeValue.setValueAfter(settingValue);
@@ -115,7 +113,7 @@ public class GeneralAuditHandler extends AbstractSystemAuditHandler {
                 }
             }
             if (!configChangeValues.isEmpty()) {
-                configChange.setConfigChangeAction(ConfigChangeAction.MODIFIED);
+                configChange.setAction(ConfigChangeAction.MODIFIED.getAction());
                 configChange.setValues(configChangeValues);
             }
         }
@@ -162,7 +160,7 @@ public class GeneralAuditHandler extends AbstractSystemAuditHandler {
             Object valueAfterObject) throws IllegalAccessException, InvocationTargetException,
             NoSuchMethodException, SystemAuditException {
 
-        ConfigChangeValue configChangeValue = new ConfigChangeValue(configChange);
+        ConfigChangeValue configChangeValue = new ConfigChangeValue();
         configChangeValue.setPropertyName(property);
         boolean isValueClassName = false;
         if (valueBeforeObject != null) {
@@ -190,9 +188,6 @@ public class GeneralAuditHandler extends AbstractSystemAuditHandler {
      * Handles Hibernate collections update calls (both Set and Map versions)
      */
     public void handleCollectionUpdate(Object collection, Serializable key) throws Exception {
-        if (!isSystemAuditEnabled()) {
-            return;
-        }
         if (collection instanceof PersistentMap) {
             handlePersistentMap(((PersistentMap) collection));
         } else if (collection instanceof PersistentCollection) {
@@ -238,7 +233,7 @@ public class GeneralAuditHandler extends AbstractSystemAuditHandler {
                 return;
             }
 
-            ConfigChangeValue configChangeValue = new ConfigChangeValue(configChange);
+            ConfigChangeValue configChangeValue = new ConfigChangeValue();
             StringBuilder valueBeforeBuilder = new StringBuilder();
             StringBuilder valueAfterBuilder = new StringBuilder();
             while (newIterator.hasNext() || oldIterator.hasNext()) {
@@ -261,7 +256,10 @@ public class GeneralAuditHandler extends AbstractSystemAuditHandler {
      * Handles Map updates
      */
     private void handlePersistentMap(PersistentMap collection) throws Exception {
-
+        // first check if this map was already processed by System Audit(XX-11564)
+        if (collection.containsKey(PERSISTENT_MAP_PROCESSED_FLAG)) {
+            return;
+        }
         SystemAuditable systemAuditable = null;
         Object owner = collection.getOwner();
         if (owner instanceof SystemAuditable) {
@@ -298,6 +296,8 @@ public class GeneralAuditHandler extends AbstractSystemAuditHandler {
             if (!configChange.getValues().isEmpty()) {
                 configChange.setDetails(systemAuditable.getEntityIdentifier());
                 getConfigChangeContext().storeConfigChange(configChange);
+                // we add a null object to flag this collection as already processed by System Audit
+                collection.put(PERSISTENT_MAP_PROCESSED_FLAG, null);
             }
         }
     }
@@ -325,7 +325,7 @@ public class GeneralAuditHandler extends AbstractSystemAuditHandler {
     private void handleConfigChangeValue(SystemAuditable systemAuditable, ConfigChange configChange,
             Object valueKey, Map<Object, Object[]> oldPersistentMap,
             PersistentMap newPersistentMap) {
-        ConfigChangeValue configChangeValue = new ConfigChangeValue(configChange);
+        ConfigChangeValue configChangeValue = new ConfigChangeValue();
         configChangeValue.setPropertyName(valueKey.toString());
         Object valueBefore = oldPersistentMap.get(valueKey);
         Object valueAfter = newPersistentMap.get(valueKey);
@@ -337,12 +337,14 @@ public class GeneralAuditHandler extends AbstractSystemAuditHandler {
         if (valueBefore != null) {
             configChangeValue.setValueBefore(getObjectName(valueBefore));
         } else {
-            configChangeValue.setValueBefore(getSettingDefaultValue(systemAuditable, valueKey));
+            String valueBeforeDefault = getSettingDefaultValue(systemAuditable, valueKey);
+            configChangeValue.setValueBefore(valueBeforeDefault);
         }
         if (valueAfter != null) {
             configChangeValue.setValueAfter(getObjectName(valueAfter));
         } else {
-            configChangeValue.setValueAfter(getSettingDefaultValue(systemAuditable, valueKey));
+            String valueAfterDefault = getSettingDefaultValue(systemAuditable, valueKey);
+            configChangeValue.setValueAfter(valueAfterDefault);
         }
         configChange.addValue(configChangeValue);
     }
@@ -357,13 +359,20 @@ public class GeneralAuditHandler extends AbstractSystemAuditHandler {
                 BeanWithSettings beanWithSettings = (BeanWithSettings) systemAuditable;
                 defaultValue = beanWithSettings.getSettingDefaultValue((String) valueKey);
             } else if (systemAuditable instanceof Group) {
-                User user = new User();
-                PermissionManager permissionManager = new PermissionManagerImpl();
-                m_modelFilesContext.loadModelFile("commserver/user-settings.xml");
-                permissionManager.setModelFilesContext(m_modelFilesContext);
-                user.setPermissionManager(permissionManager);
-                Setting groupSettings = ((Group) systemAuditable).inherhitSettingsForEditing(user);
-                defaultValue = groupSettings.getSetting((String) valueKey).getDefaultValue();
+                try {
+                    User user = new User();
+                    PermissionManager permissionManager = new PermissionManagerImpl();
+                    m_modelFilesContext
+                            .loadModelFile("commserver/user-settings.xml");
+                    permissionManager.setModelFilesContext(m_modelFilesContext);
+                    user.setPermissionManager(permissionManager);
+                    Setting groupSettings = ((Group) systemAuditable)
+                            .inherhitSettingsForEditing(user);
+                    defaultValue = groupSettings.getSetting((String) valueKey)
+                            .getDefaultValue();
+                } catch (NullPointerException npe) {
+                    return null;
+                }
             }
         }
         return defaultValue;
@@ -374,9 +383,6 @@ public class GeneralAuditHandler extends AbstractSystemAuditHandler {
      */
     public void handleUserProfileConfigChange(User user) throws SystemAuditException,
             IllegalAccessException, InvocationTargetException, NoSuchMethodException {
-        if (!isSystemAuditEnabled()) {
-            return;
-        }
         UserProfile newUserProfile = user.getUserProfile();
         UserProfile oldUserProfile = m_userProfileService.getUserProfile(user.getId().toString());
         ConfigChange configChange = buildConfigChange(ConfigChangeAction.MODIFIED, user.getConfigChangeType());
@@ -438,9 +444,6 @@ public class GeneralAuditHandler extends AbstractSystemAuditHandler {
     }
 
     public void handleLicenseUpload(String licenseName) throws SystemAuditException {
-        if (!isSystemAuditEnabled()) {
-            return;
-        }
         ConfigChange configChange = buildConfigChange(ConfigChangeAction.ADDED,
                 ConfigChangeType.LICENSE_UPLOAD.getName());
         configChange.setDetails(licenseName);
@@ -449,15 +452,11 @@ public class GeneralAuditHandler extends AbstractSystemAuditHandler {
 
     public void handleServiceRestart(String serverName,
             List<String> serviceNameList) throws SystemAuditException {
-        if (!isSystemAuditEnabled()) {
-            return;
-        }
         ConfigChange configChange = buildConfigChange(
                 ConfigChangeAction.SERVICE_RESTART, ConfigChangeType.SERVER.getName());
         configChange.setDetails(serverName);
         for (String serviceName : serviceNameList) {
-            ConfigChangeValue configChangeValue = new ConfigChangeValue(
-                    configChange);
+            ConfigChangeValue configChangeValue = new ConfigChangeValue();
             configChangeValue.setPropertyName(serviceName);
             configChange.addValue(configChangeValue);
         }

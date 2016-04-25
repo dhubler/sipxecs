@@ -34,24 +34,16 @@ BUILD_EPEL = \
 	Canna-libs-* \
 	ccache-* \
 	compface-1.5*\
-	erlang-erlydtl-* \
-	erlang-getopt-* \
-	erlang-gettext-* \
-	erlang-lfe-* \
-	erlang-mustache-* \
-	erlang-neotoma-* \
-	erlang-protobuffs-* \
-	erlang-meck-* \
-	erlang-rebar-* \
+	erlang-* \
 	gperftools-devel-* \
 	gtest-devel-* \
 	gyp-* \
 	http-parser-* \
 	http-parser-devel-* \
+	libmcrypt-devel-* \
 	libdnet-* \
 	libdnet-devel-* \
 	libev-* \
-	libmongodb-devel-2.4* \
 	libuv-* \
 	libuv-devel-* \
 	neXtaw-* \
@@ -74,6 +66,7 @@ BUILD_EPEL = \
 
 # Technincally these could be build and runtime requirements
 RUNTIME_EPEL = \
+	elasticsearch-* \
 	erlang-lager-* \
 	erlang-gen_leader-* \
 	erlang-gproc-* \
@@ -87,11 +80,8 @@ RUNTIME_EPEL = \
 	libiodbc-3* \
 	libev-4.* \
 	libmcrypt-* \
-	libmongodb-2.4* \
 	libunwind-* \
 	monit-* \
-	mongodb-2.4* \
-	mongodb-server-2.4* \
 	openpgm-5* \
 	php-pecl-mongo-* \
 	poco-crypto-* \

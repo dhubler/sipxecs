@@ -15,11 +15,12 @@
 package org.sipfoundry.sipxconfig.common;
 
 import java.util.Collection;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
+import org.sipfoundry.sipxconfig.Pluggable0ResourceBundleMessageSource;
+import org.sipfoundry.sipxconfig.PluggableResourceBundleMessageSource;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.ListableBeanFactory;
@@ -91,8 +92,25 @@ public class GlobalMessageSource implements MessageSource, BeanFactoryAware {
 
     Collection<MessageSource> getDelegates() {
         if (m_delegates == null) {
+            //using LinkedHashSet to keep insertion order
+            LinkedHashSet<MessageSource> copy = new LinkedHashSet<MessageSource>();
+            //pluggable 0 beans will be added first so plugin resource labels to come last
+            Map<String, Pluggable0ResourceBundleMessageSource> pluggable0Beans = m_beanFactory.
+                getBeansOfType(Pluggable0ResourceBundleMessageSource.class);
+            Collection<Pluggable0ResourceBundleMessageSource> pluggable0Values = pluggable0Beans.values();
+            //Add pluggable 0 values first - make sure they are not getting overwritten
+            copy.removeAll(pluggable0Values);
+            copy.addAll(pluggable0Values);
             Map<String, MessageSource> beans = m_beanFactory.getBeansOfType(MessageSource.class);
-            Set<MessageSource> copy = new HashSet<MessageSource>(beans.values());
+            copy.addAll(beans.values());
+            //pluggable beans will be added last so plugin resource labels to come first
+            Map<String, PluggableResourceBundleMessageSource> pluggableBeans = m_beanFactory.
+                getBeansOfType(PluggableResourceBundleMessageSource.class);
+            Collection<PluggableResourceBundleMessageSource> pluggableValues = pluggableBeans.values();
+            //Add pluggable values last - might be needed to get overwritten
+            copy.removeAll(pluggableValues);
+            copy.addAll(pluggableValues);
+
             // otherwise recursive!
             copy.remove(this);
             m_delegates = copy;

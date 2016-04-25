@@ -32,6 +32,8 @@ import org.springframework.beans.factory.annotation.Required;
  * and we don't want to restart config server
  */
 public class AdminSettings extends PersistableSettings implements DeployConfigOnEdit {
+
+    public static final String HAZELCAST_NOTIFICATION = "configserver-config/hazelcastNotification";
     private static final Log LOG = LogFactory.getLog(AdminSettings.class);
 
     private static final String LDAP_MANAGEMENT_DISABLE = "ldap-management/disable";
@@ -41,10 +43,15 @@ public class AdminSettings extends PersistableSettings implements DeployConfigOn
     private static final String AUTHENTICATION_AUTH_ACC_NAME = "configserver-config/account-name";
     private static final String AUTHENTICATION_EMAIL_ADDRESS = "configserver-config/email-address";
     private static final String CORS_DOMAIN_SETTING = "configserver-config/corsDomains";
-    private static final String SYSTEM_AUDIT = "configserver-config/systemAudit";
-
-    private static boolean s_systemAuditEnabled = true;
-
+    private static final String NEW_LDAP_USERS_GROUP_PREFIX = "ldap-management/newUserGroupPrefix";
+    private static final String PASSWORD_POLICY = "configserver-config/password-policy";
+    private static final String DEFAULT_PASSWORD = "configserver-config/password-default";
+    private static final String DEFAULT_PASSWORD_CONFIRM = "configserver-config/password-default-confirm";
+    private static final String VMPIN_DEFAULT = "configserver-config/vmpin-default";
+    private static final String VMPIN_DEFAULT_CONFIRM = "configserver-config/vmpin-default-confirm";
+    private static final String POSTGRES_PASSWORD = "configserver-config/postgres-pwd";
+    private static final String POSTGRES_PASSWORD_CONFIRM = "configserver-config/postgres-pwd-confirm";
+    private static final String SYSTEM_AUDIT_KEEP_CHANGES = "config-change-audit/keep-changes";
     private PasswordPolicy m_passwordPolicy;
     private String[] m_logLevelKeys;
 
@@ -66,15 +73,35 @@ public class AdminSettings extends PersistableSettings implements DeployConfigOn
     }
 
     public String getSelectedPolicy() {
-        return getSettingValue("configserver-config/password-policy");
+        return getSettingValue(PASSWORD_POLICY);
     }
 
     public String getDefaultPassword() {
-        return getSettingValue("configserver-config/password-default");
+        return getSettingValue(DEFAULT_PASSWORD);
+    }
+
+    public String getDefaultPasswordConfirmed() {
+        return getSettingValue(DEFAULT_PASSWORD_CONFIRM);
     }
 
     public String getDefaultVmPin() {
-        return getSettingValue("configserver-config/vmpin-default");
+        return getSettingValue(VMPIN_DEFAULT);
+    }
+
+    public String getVmpinDefaultConfirmed() {
+        return getSettingValue(VMPIN_DEFAULT_CONFIRM);
+    }
+
+    public String getPostgresPassword() {
+        return getSettingValue(POSTGRES_PASSWORD);
+    }
+
+    public String getPostgresPasswordConfirmed() {
+        return getSettingValue(POSTGRES_PASSWORD_CONFIRM);
+    }
+
+    public int getSystemAuditKeepChanges() {
+        return (Integer) getSettingTypedValue(SYSTEM_AUDIT_KEEP_CHANGES);
     }
 
     public int getAge() {
@@ -91,6 +118,10 @@ public class AdminSettings extends PersistableSettings implements DeployConfigOn
 
     public boolean isDelete() {
         return (Boolean) getSettingTypedValue(LDAP_MANAGEMENT_DELETE);
+    }
+
+    public String getNewLdapUserGroupNamePrefix() {
+        return (String) getSettingTypedValue(NEW_LDAP_USERS_GROUP_PREFIX);
     }
 
     public void setDisable(boolean disable) {
@@ -127,13 +158,12 @@ public class AdminSettings extends PersistableSettings implements DeployConfigOn
         setSettingValue(CORS_DOMAIN_SETTING, noSpaces);
     }
 
-    public static boolean isSystemAuditEnabled() {
-        return s_systemAuditEnabled;
+    public void setHazelcastNotification(boolean notification) {
+        setSettingTypedValue(HAZELCAST_NOTIFICATION, notification);
     }
 
-    public void setSystemAuditEnabled(boolean systemAuditEnabled) {
-        s_systemAuditEnabled = systemAuditEnabled;
-        setSettingTypedValue(SYSTEM_AUDIT, systemAuditEnabled);
+    public boolean isHazelcastNotification() {
+        return (Boolean) getSettingTypedValue(HAZELCAST_NOTIFICATION);
     }
 
     protected static String validateDomainList(String corsDomains) {
@@ -161,7 +191,7 @@ public class AdminSettings extends PersistableSettings implements DeployConfigOn
     }
 
     public class AdminSettingsDefaults {
-        @SettingEntry(path = "configserver-config/password-policy")
+        @SettingEntry(path = PASSWORD_POLICY)
         public String getDefaultPolicy() {
             return m_passwordPolicy.getDefaultPolicy();
         }

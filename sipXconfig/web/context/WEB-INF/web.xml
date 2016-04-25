@@ -13,7 +13,9 @@
        classpath:/org/sipfoundry/sipxconfig/system.beans.xml
        classpath*:/org/sipfoundry/sipxconfig/*/**/*.beans.xml
        classpath:/org/sipfoundry/sipxconfig/api/jaxrs-server.xml
+       classpath*:/sipxplugin2.beans.xml
        classpath*:/sipxplugin.beans.xml
+       classpath*:/sipxplugin0.beans.xml
     </param-value>
   </context-param>
 

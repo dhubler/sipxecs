@@ -9,6 +9,7 @@ sipx_core = \
   sipXportLib \
   sipXtackLib \
   sipXresiprocate \
+  oss_core \
   sipXmediaLib \
   sipXmediaAdapterLib \
   sipXcallLib \
@@ -21,6 +22,7 @@ sipx_core = \
   sipXbridge \
   sipXcdr \
   sipXconfig \
+  sipXcom \
   sipXopenfire \
   sipXcounterpath \
   sipXprompts \
@@ -34,6 +36,7 @@ sipx_core = \
   sipXsaa \
   sipXyard \
   sipXrelease \
+  sipXjitsi \
   sipXecs
 
 #additional configure options for sipXresiprocate package
@@ -52,7 +55,9 @@ sipx_extra = \
   sipXrecording \
   sipXhomer \
   sipXcallQueue \
-  sipXtools
+  sipXAocBilling \
+  sipXtools \
+  sipXcallback
 
 # sipxecs projects that are NOT essential for a running communication system
 # and are related to configuration system. Many are phone plugins
@@ -105,6 +110,7 @@ lib_all = \
   rubygem-file-tail \
   erlang \
   freeswitch \
+  freeswitch-sounds-en-us-callie \
   hiredis \
   net-snmp \
   homer \
@@ -158,7 +164,7 @@ sipXopenfire_DEPS = sipXconfig sipXsqa
 sipXcounterpath_DEPS = sipXconfig
 sipXaudiocodes_DEPS = sipXconfig
 sipXivr_DEPS = sipXconfig
-sipXproxy_DEPS = sipXcommserverLib
+sipXproxy_DEPS = sipXcommserverLib oss_core
 sipXpublisher_DEPS = sipXcommserverLib
 sipXregistry_DEPS = sipXcommserverLib
 sipXpage_DEPS = sipXcommons
@@ -168,6 +174,7 @@ sipXsaa_DEPS = sipXsqa sipXcallLib sipXcommserverLib
 sipXhomer_DEPS = sipXsqa sipXresiprocate
 sipXsbc_DEPS = sipXconfig sipXsqa sipXregistry
 sipXcallQueue_DEPS = sipXconfig
+sipXAocBilling_DEPS = sipXconfig
 sipXexample_DEPS = sipXcommserverLib sipXconfig
 sipXsss_DEPS = sipXsqa sipXcommserverLib sipXresiprocate
 sipXyard = sipXcommserverLib

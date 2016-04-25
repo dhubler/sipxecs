@@ -39,6 +39,12 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/thread/pthread/mutex.hpp>
 
+#include "OSS/SIP/SIPMessage.h"
+#include "OSS/SIP/SIPURI.h"
+#include "OSS/SIP/SIPContact.h"
+#include "OSS/SIP/SIPRequestLine.h"
+#include "OSS/SIP/SIPFrom.h"
+
 // DEFINES
 //#define TEST_PRINT 1
 
@@ -69,6 +75,11 @@ static const int DISPATCH_SPEED_SAMPLES_COUNT = 5;
 static const int DISPATCH_MAX_YIELD_TIME_IN_SEC = 32;
 static const int MAX_DISPATCH_DELAY_IN_MS = 200; // This is 5 messages per sec which is so poor!
 static const int ALARM_ON_CONSECUTIVE_YIELD = 5;
+
+static const char* X_SIPX_CALLER_LOCATIONS = "X-Sipx-Caller-Locations";
+static const char* X_SIPX_CALLER_LOCATION_FALLBACK = "X-Sipx-Caller-Location-Fallback";
+static const char* X_SIPX_CALLER_LOCATIONS_DONE = "X-Sipx-Caller-Locations-Done";
+
 
 // STRUCTS
 // TYPEDEFS
@@ -124,6 +135,7 @@ SipRouter::SipRouter(SipUserAgent& sipUserAgent,
    ,_lastDispatchYieldTime(0)
    ,_isDispatchYielding(false)
    ,_trustSbcRegisteredCalls(FALSE)
+   ,_suppressAlertIndicatorForTransfers(FALSE)
 {
    // Get Via info to use as defaults for route & realm
    UtlString dnsName;
@@ -235,6 +247,8 @@ SipRouter::SipRouter(SipUserAgent& sipUserAgent,
    mpSipUserAgent->setPreDispatchEvaluator(boost::bind(&SipRouter::preDispatch, this, _1));
    
    mpSipUserAgent->setFinalResponseHandler(boost::bind(&SipRouter::modifyFinalResponse, this, _1, _2, _3));
+   
+   mpSipUserAgent->setPreprocesor(boost::bind(&SipRouter::preprocessMessage, this, _1, _2, _3));
      
    // All is in readiness... Let the proxying begin...
    mpSipUserAgent->start();
@@ -406,6 +420,7 @@ void SipRouter::readConfig(OsConfigDb& configDb, const Url& defaultUri)
    }
    
    _trustSbcRegisteredCalls = configDb.getBoolean("SIPX_TRUST_SBC_REGISTERED_CALLS", FALSE);
+   _suppressAlertIndicatorForTransfers = configDb.getBoolean("SIPX_SUPPRESS_ALERT_INDICATOR_IN_TRANSFERS", FALSE);
    
 }
 
@@ -683,7 +698,7 @@ SipRouter::handleMessage( OsMsg& eventMessage )
                               << " application: " << appQueueSize << "/" << appMaxQueueSize
                               << " transport: " << queueSize << "/" <<  maxQueueSize 
                               << " which exceeds " << _rejectOnFilledQueuePercent << "%");
-                          finalResponse.setResponseData(sipRequest, SIP_5XX_CLASS_CODE, "Queue Size Is Too High");
+                          finalResponse.setResponseData(sipRequest, SIP_SERVICE_UNAVAILABLE_CODE, "Queue Size Is Too High");
                           mpSipUserAgent->send(finalResponse);
                           return TRUE; // Simply return true to indicate we have handled the request
                         }
@@ -728,7 +743,7 @@ SipRouter::handleMessage( OsMsg& eventMessage )
                   else if (!_threadPool.schedule(boost::bind(&SipRouter::handleRequest, this, _1), pMsg))
                   {
                     SipMessage finalResponse;
-                    finalResponse.setResponseData(pMsg, SIP_5XX_CLASS_CODE, "No Thread Available");
+                    finalResponse.setResponseData(pMsg, SIP_SERVICE_UNAVAILABLE_CODE, "No Thread Available");
                     mpSipUserAgent->send(finalResponse);
 
                     OS_LOG_ERROR(FAC_SIP, "SipRouter::handleMessage failed to create pooled thread!  Threadpool size="
@@ -788,7 +803,7 @@ SipRouter::handleMessage( OsMsg& eventMessage )
     if (!message.isResponse())
     {
       SipMessage finalResponse;
-      finalResponse.setResponseData(&message, SIP_5XX_CLASS_CODE, errorString.c_str());
+      finalResponse.setResponseData(&message, SIP_SERVICE_UNAVAILABLE_CODE, errorString.c_str());
       mpSipUserAgent->send(finalResponse);
     }
   }
@@ -906,6 +921,108 @@ void SipRouter::addRuriParams(SipMessage& sipRequest, const UtlString& ruriParam
   }
 }
 
+void SipRouter::identifyCallerLocation(SipMessage& sipRequest)
+{
+  UtlString method;
+  sipRequest.getRequestMethod(&method);
+  if (method.compareTo( SIP_INVITE_METHOD ) != 0)
+  {
+    return;
+  }
+  
+ 
+  if(!sipRequest.getHeaderValue( 0, X_SIPX_CALLER_LOCATIONS ) && !sipRequest.getHeaderValue( 0, X_SIPX_CALLER_LOCATIONS_DONE ))
+  {
+    UtlString sendAddress;
+    int sendPort;
+    Url fromUrl;
+    Url toUrl;
+    UtlString toTag;
+    UtlString identity;
+    
+    UtlString host;
+    EntityDB::CallerLocations callerLocations;
+    std::string fallbackLocation;
+    
+    sipRequest.getSendAddress(&sendAddress, &sendPort);
+    
+    if (sendAddress.isNull())
+    {
+      OS_LOG_ERROR(FAC_SIP, "SipRouter::identifyCallerLocation - Unable to identity address.  CIDR matching can not be done.");
+    }
+    
+    sipRequest.getFromUrl(fromUrl);
+    sipRequest.getToUrl(toUrl);
+    fromUrl.getIdentity(identity);
+    fromUrl.getHostAddress(host);
+    toUrl.getFieldParameter("tag", toTag);
+    
+    if (!toTag.isNull())
+    {
+      //
+      // This is a mid-dialog request
+      //
+      return;
+    }
+    //
+    // final check if the identity is an alias
+    //
+    if (mDomainName.compareTo(host.data()) != 0 && isLocalDomain(fromUrl, true))
+    {
+      host = mDomainName;
+      std::ostringstream realIdentity;
+      UtlString user;
+      fromUrl.getUserId(user);
+      realIdentity << user.data() << "@" << mDomainName.data();
+
+      OS_LOG_INFO(FAC_SIP, "SipRouter::identifyCallerLocation - using " << realIdentity.str() << " instead of " << identity.data());
+
+      identity = realIdentity.str();
+    }
+  
+    
+    OS_LOG_INFO(FAC_SIP, "SipRouter::identifyCallerLocation - determining location for identity " << identity.data());
+    SipRouter::getEntityDBInstance()->getCallerLocation(callerLocations, fallbackLocation, identity.data(), host.data(), sendAddress.data());
+
+    
+    if (!callerLocations.empty())
+    {
+      std::ostringstream locHeader;
+      
+      int iterCount = 0;
+      for (EntityDB::CallerLocations::iterator iter = callerLocations.begin(); iter != callerLocations.end(); iter++)
+      {
+        if (!iter->empty())
+        {
+          locHeader << *iter;
+          if (iterCount < callerLocations.size() - 1)
+          {
+            locHeader << ", ";
+          }
+        }
+        iterCount++;
+      }
+      
+      if (!locHeader.str().empty())
+      {
+        OS_LOG_INFO(FAC_SIP, "SipRouter::identifyCallerLocation - setting location for identity " << identity.data() << " to " << locHeader.str());
+        
+        sipRequest.setHeaderValue(X_SIPX_CALLER_LOCATIONS, locHeader.str().c_str(), 0);
+        
+        if (!fallbackLocation.empty())
+        {
+          OS_LOG_INFO(FAC_SIP, "SipRouter::identifyCallerLocation - setting fallback location for identity " << identity.data() << " to " << fallbackLocation);
+          sipRequest.setHeaderValue(X_SIPX_CALLER_LOCATION_FALLBACK, fallbackLocation.c_str());
+        }
+      }
+      else
+      {
+        sipRequest.setHeaderValue(X_SIPX_CALLER_LOCATIONS_DONE, "true", 0);
+      }
+    }
+  }
+}
+
 SipRouter::ProxyAction SipRouter::proxyMessage(SipMessage& sipRequest, SipMessage& sipResponse)
 {
    ProxyAction returnedAction = SendRequest;
@@ -949,6 +1066,11 @@ SipRouter::ProxyAction SipRouter::proxyMessage(SipMessage& sipRequest, SipMessag
         RouteState routeState(sipRequest, removedRoutes, mRouteHostPort);
         removedRoutes.destroyAll(); // done with routes - discard them.
 
+        //
+        // identify the caller location
+        //
+        identifyCallerLocation(sipRequest);
+        
         if( !sipRequest.getHeaderValue( 0, SIP_SIPX_SPIRAL_HEADER ))
         {
            // Apply NAT mapping info to all non-spiraling requests to make
@@ -1234,6 +1356,9 @@ SipRouter::ProxyAction SipRouter::proxyMessage(SipMessage& sipRequest, SipMessag
               // If the request contained our proprietary spiral header then remove it
               // since spiraling is complete.
               sipRequest.removeHeader( SIP_SIPX_SPIRAL_HEADER, 0 );
+              sipRequest.removeHeader( X_SIPX_CALLER_LOCATIONS, 0 );
+              sipRequest.removeHeader( X_SIPX_CALLER_LOCATION_FALLBACK, 0 );
+              sipRequest.removeHeader( X_SIPX_CALLER_LOCATIONS_DONE, 0 );
            }
         }
 
@@ -1464,6 +1589,24 @@ SipRouter::ProxyAction SipRouter::proxyMessage(SipMessage& sipRequest, SipMessag
                 internalRoute.toString(recordRoute);
                 sipRequest.addRecordRouteUri(recordRoute);
               }
+              else
+              {
+                //
+                // if the inbound transaction is not TLS but target is TLS
+                // insert a TLS record route on top to maintain the correct transport 
+                // for opposite directions
+                //
+                std::string rline(sipRequest.getFirstHeaderLine());
+                boost::to_lower(rline);
+                if (rline.find("transport=tls") != std::string::npos || rline.find("sips:") != std::string::npos)
+                {
+                  Url outboundRoute(mRouteHostSecurePort.data());
+                  outboundRoute.setUrlParameter("lr",NULL);
+                  outboundRoute.setUrlParameter("transport=tls",NULL);
+                  outboundRoute.toString(recordRoute);
+                  sipRequest.addRecordRouteUri(recordRoute);
+                }
+              }
            }
            
            //
@@ -1491,6 +1634,29 @@ SipRouter::ProxyAction SipRouter::proxyMessage(SipMessage& sipRequest, SipMessag
             route.toString(recordRoute);
             sipRequest.addRecordRouteUri(recordRoute);
         }
+        else if (
+          !bMessageWillSpiral &&
+          sipRequest.getSendProtocol() != OsSocket::SSL_SOCKET &&
+          sipRequest.isRecordRouteAccepted())
+        {
+          //
+          // if the inbound transaction is not TLS but target is TLS
+          // insert a TLS record route on top to maintain the correct transport 
+          // for opposite directions
+          //
+          std::string rline(sipRequest.getFirstHeaderLine());
+          boost::to_lower(rline);
+          if (rline.find("transport=tls") != std::string::npos || rline.find("sips:") != std::string::npos)
+          {
+            UtlString recordRoute;
+            Url outboundRoute(mRouteHostSecurePort.data());
+            outboundRoute.setUrlParameter("lr",NULL);
+            outboundRoute.setUrlParameter("transport=tls",NULL);
+            outboundRoute.toString(recordRoute);
+            sipRequest.addRecordRouteUri(recordRoute);
+          }
+        }
+        
      }        // end all extensions are supported
      else
      {
@@ -1528,7 +1694,7 @@ SipRouter::ProxyAction SipRouter::proxyMessage(SipMessage& sipRequest, SipMessag
    // respond with 5XX code in case an exception was caught
    if (!errorString.empty())
    {
-     sipResponse.setResponseData(&sipRequest, SIP_5XX_CLASS_CODE, errorString.c_str());
+     sipResponse.setResponseData(&sipRequest, SIP_SERVICE_UNAVAILABLE_CODE, errorString.c_str());
      returnedAction = SendResponse;
    }
 
@@ -2141,4 +2307,123 @@ void SipRouter::modifyFinalResponse(SipTransaction* pTransaction, const SipMessa
   {
     (*iter)->modifyFinalResponse(pTransaction, request, finalResponse);
   }
+}
+
+
+bool SipRouter::preprocessMessage(SipMessage& parsedMsg,
+                                  const UtlString& msgText,
+                                  int msgLength)
+{
+  //
+  // Due to a bug in the sipx URI parser, we will be dropping messages that has a comma in the user part
+  // See: http://jira.sipxcom.org/browse/XX-11602?filter=-2
+  //
+  try
+  {
+    OSS::SIP::SIPMessage msg(msgText.data());
+
+    if (msg.isRequest())
+    {
+      //
+      // Validate contact-uri
+      //
+      std::vector<std::string> bindings;
+      OSS::SIP::SIPContact::msgGetContacts(&msg, bindings);
+
+      if (bindings.empty() && (msg.isRequest("INVITE") || msg.isRequest("SUBSCRIBE")))
+      {
+        OS_LOG_WARNING(FAC_SIP, "Unable to parse any contact in message - \n" << msgText.data());
+        return false;
+      }
+
+      for (std::vector<std::string>::iterator iter = bindings.begin(); iter != bindings.end(); iter++)
+      {
+        std::string& contact = *iter;
+        OSS::SIP::ContactURI hContact(contact);
+        std::string user = hContact.getUser();
+        
+        //
+        // First validate the entire URI
+        //
+        std::string uri = hContact.getURI();
+        if (!OSS::SIP::SIPURI::verify(uri.c_str()))
+        {
+          OS_LOG_WARNING(FAC_SIP, "Dropping message with invalid contact-uri " << uri.c_str() << "\n" << msgText.data());
+          return false;
+        }
+
+        //
+        // Commas are LEGAL characters in the user-info ABNF definition for a URI.
+        // We intentionally drop these messages because of a bug in the sipX URI
+        // parser.  It is too risky to fix that currently or I'm just too lazy.
+        // If you had the mileage to fix the parser, feel free to comment this check out.
+        //
+        // Hint:  The URI parser treats commas as header boundaries, then it miserably chokes on it.
+        if (user.find(',') != std::string::npos)
+        {
+          OS_LOG_WARNING(FAC_SIP, "Dropping message with comma in contact-user - \n" << msgText.data());
+          return false;
+        }
+      }
+      
+      // See: http://jira.sipxcom.org/browse/SIPX-17
+      
+      //
+      // Validate request-line
+      //
+      OSS::SIP::SIPRequestLine rLine;
+      rLine = msg.startLine();
+      std::string ruri;
+      rLine.getURI(ruri);
+      if (!OSS::SIP::SIPURI::verify(ruri.c_str()))
+      {
+        OS_LOG_WARNING(FAC_SIP, "Dropping message with invalid request-uri " << ruri.c_str() << "\n" << msgText.data());
+        return false;
+      }
+      
+      //
+      // Validate the from-uri
+      //
+      const std::string& from = msg.hdrGet(OSS::SIP::HDR_FROM);
+      OSS::SIP::SIPFrom hFrom(from);
+      std::string furi = hFrom.getURI();
+      if (!OSS::SIP::SIPURI::verify(furi.c_str()))
+      {
+        OS_LOG_WARNING(FAC_SIP, "Dropping message with invalid from-uri " << furi.c_str() << "\n" << msgText.data());
+        return false;
+      }
+      
+      //
+      // Validate the to-uri
+      //
+      const std::string& to = msg.hdrGet(OSS::SIP::HDR_TO);
+      OSS::SIP::SIPTo hTo(to);
+      std::string turi = hTo.getURI();
+      if (!OSS::SIP::SIPURI::verify(turi.c_str()))
+      {
+        OS_LOG_WARNING(FAC_SIP, "Dropping message with invalid to-uri " << turi.c_str() << "\n" << msgText.data());
+        return false;
+      }
+      
+      //
+      // Check if the To-URI has a SIP_SIPX_AUTHIDENTITY header param, reinsert as independent header.  See http://jira.sipxcom.org/browse/UC-2891
+      //
+      if (to.find(SIP_SIPX_AUTHIDENTITY) != std::string::npos)
+      {
+        std::string authIdentity = hTo.getHeaderParam(SIP_SIPX_AUTHIDENTITY);
+        if (!authIdentity.empty() && !msg.hdrPresent(SIP_SIPX_AUTHIDENTITY))
+        {
+          OS_LOG_WARNING(FAC_SIP, "To header has a " << SIP_SIPX_AUTHIDENTITY << " header parameter.  Reinserting it as an independent header.");
+          parsedMsg.setHeaderValue(SIP_SIPX_AUTHIDENTITY, authIdentity.c_str(), 0);
+        }
+      }
+    }
+  }
+  catch(...)
+  {
+    OS_LOG_WARNING(FAC_SIP, "Unable to parse incoming message - \n" << msgText.data());
+    return false;
+  }
+  
+  return true;
 }

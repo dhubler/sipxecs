@@ -261,13 +261,13 @@ public class FilesystemMailboxManager extends AbstractMailboxManager {
         try {
             Folder messageFolder = message.getParentFolder();
             FilenameFilter filterById = new FileFilterByMessageId(message.getMessageId());
-            File[] messageFiles = getFolder(message.getUserName(), messageFolder).listFiles(filterById);
+            File[] messageFiles = getFolder(user.getUserName(), messageFolder).listFiles(filterById);
             if (messageFolder == Folder.DELETED) {
                 for (File messageFile : messageFiles) {
                     FileUtils.deleteQuietly(messageFile);
                 }
             } else if (messageFolder == Folder.INBOX || messageFolder == Folder.SAVED) {
-                File deletedFolder = getFolder(message.getUserName(), Folder.DELETED);
+                File deletedFolder = getFolder(user.getUserName(), Folder.DELETED);
                 for (File file : messageFiles) {
                     String fileName = file.getName();
                     // mark heard
@@ -411,7 +411,11 @@ public class FilesystemMailboxManager extends AbstractMailboxManager {
     @Override
     public void saveRecordedName(TempMessage message) {
         try {
-            FileUtils.copyFile(new File(message.getTempPath()), getRecordedName(message.getCurrentUser()));
+            File name = new File(getUserDirectory(message.getCurrentUser()), getNameFile());
+            if (!name.exists()) {
+                FileUtils.touch(name);
+            }
+            FileUtils.copyFile(new File(message.getTempPath()), name);
         } catch (IOException ex) {
             LOG.error("Failed to save recorded name", ex);
         }
