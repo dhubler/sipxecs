@@ -12,10 +12,12 @@ package org.sipfoundry.sipxconfig.ivr;
 import static org.junit.Assert.assertEquals;
 
 import java.io.StringWriter;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
 import org.apache.commons.io.IOUtils;
+import org.easymock.classextension.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.sipfoundry.sipxconfig.address.Address;
@@ -24,7 +26,9 @@ import org.sipfoundry.sipxconfig.apache.ApacheManager;
 import org.sipfoundry.sipxconfig.commserver.Location;
 import org.sipfoundry.sipxconfig.dialplan.attendant.AutoAttendantSettings;
 import org.sipfoundry.sipxconfig.domain.Domain;
+import org.sipfoundry.sipxconfig.feature.FeatureManager;
 import org.sipfoundry.sipxconfig.freeswitch.FreeswitchFeature;
+import org.sipfoundry.sipxconfig.freeswitch.FreeswitchRecordingSettings;
 import org.sipfoundry.sipxconfig.im.ImManager;
 import org.sipfoundry.sipxconfig.restserver.RestServer;
 import org.sipfoundry.sipxconfig.test.TestHelper;
@@ -41,14 +45,23 @@ public class IvrConfigTest {
     private Address m_imApi;
     private Address m_imbotApi;
     private Address m_fsEvent;
+    private FeatureManager m_featureManager;
+    private FreeswitchRecordingSettings m_fsSettings;
 
     @Before
     public void setUp() {
         m_config = new IvrConfig();
+        m_featureManager = EasyMock.createMock(FeatureManager.class);
+        List<Location> locations = new ArrayList<Location>();
         m_location = TestHelper.createDefaultLocation();
+        locations.add(m_location);
+        m_featureManager.getLocationsForEnabledFeature(Ivr.FEATURE);
+        EasyMock.expectLastCall().andReturn(locations).anyTimes();
+        EasyMock.replay(m_featureManager);
         m_domain = new Domain("example.org");
         m_domain.setSipRealm("grapefruit");
         m_settings = new IvrSettings();
+        m_settings.setFeatureManager(m_featureManager);
         m_settings.setModelFilesContext(TestHelper.getModelFilesContext());
         m_restApi = new Address(RestServer.HTTP_API, "rest.example.org", 101);
         m_adminApi = new Address(AdminContext.HTTP_ADDRESS, "admin.example.org", 102);
@@ -58,13 +71,20 @@ public class IvrConfigTest {
         m_aaSettings = new AutoAttendantSettings();
         m_aaSettings.setModelFilesContext(TestHelper.getModelFilesContext());
         m_aaSettings.setSettingTypedValue("liveAttendant/did", "1234567");
+        m_aaSettings.setSettingTypedValue("liveAttendant/dtmf/maxDigits", 20);
+        m_aaSettings.setSettingTypedValue("liveAttendant/dtmf/firstDigitTimeout", 10);
+        m_aaSettings.setSettingTypedValue("liveAttendant/dtmf/interDigitTimeout", 1);
+        m_aaSettings.setSettingTypedValue("liveAttendant/dtmf/extraDigitTimeout", 1);
+        m_fsSettings = new FreeswitchRecordingSettings();
+        m_fsSettings.setModelFilesContext(TestHelper.getModelFilesContext());
+        m_fsSettings.setSettingValue("fs-recording/resample", "16000");
     }
 
     @Test
     public void testWriteWithOpenfireService() throws Exception {
         StringWriter actual = new StringWriter();
         m_config.write(actual, m_settings, m_domain, m_location, "192.168.0.1,192.168.0.2", 8100, m_restApi,
-                m_adminApi, m_apacheApi, m_imApi, m_fsEvent, m_aaSettings);
+                m_adminApi, m_apacheApi, m_imApi, m_fsEvent, m_aaSettings, true, 0, m_fsSettings);
         String expected = IOUtils.toString(getClass().getResourceAsStream(
                 "expected-sipxivr-with-openfire.properties"));
         assertEquals(expected, actual.toString());
@@ -74,7 +94,7 @@ public class IvrConfigTest {
     public void testWriteWithoutOpenfireService() throws Exception {
         StringWriter actual = new StringWriter();
         m_config.write(actual, m_settings, m_domain, m_location, "192.168.0.1,192.168.0.2", 8100, m_restApi,
-                m_adminApi, m_apacheApi, null, m_fsEvent, m_aaSettings);
+                m_adminApi, m_apacheApi, null, m_fsEvent, m_aaSettings, false, 0, m_fsSettings);
         String expected = IOUtils.toString(getClass().getResourceAsStream(
                 "expected-sipxivr-without-openfire.properties"));
         assertEquals(expected, actual.toString());

@@ -64,7 +64,7 @@ bundle agent sipxconfig_running {
         comment => "start sipxconfig",
         args => "start";
 
-    primary.sipxconfig_running.(restart_sipxconfig|restart_sipxecs|java_authorities_repaired)::
+    primary.sipxconfig_running.(restart_sipxconfig|restart_sipxecs|java_authorities_repaired|change_password)::
       "$(sipx.SIPX_SERVICEDIR)/sipxconfig"
         comment => "restart sipxconfig",
         args => "asyncrestart";
@@ -135,13 +135,9 @@ bundle edit_line sipx_log4j_properties_contents {
 bundle agent system_audit_cleanup {
   vars:
 	# execute it every day after midnight
-	"cron" string => "20 0 * * * $(sipx.SIPX_BINDIR)/system-audit-cleanup &>> $(sipx.SIPX_LOGDIR)/system-audit-cleanup.log";
 	"cron_id" string => ".*/system-audit-cleanup .*"; #regex
 
   methods:
-	primary::
-	  "any" usebundle => add_crontab("$(cron_id)", "$(sipx.SIPXPBXUSER)", "$(cron)");
-
-	!primary::
+	any::
 	  "any" usebundle => remove_crontab("$(cron_id)", "$(sipx.SIPXPBXUSER)");
 }

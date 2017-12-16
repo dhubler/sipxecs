@@ -119,6 +119,12 @@ public class AdminContextImpl extends HibernateDaoSupport implements AdminContex
             if (!plan.isIncludeDeviceFiles()) {
                 m_backup.append(" --no-device-files");
             }
+            String tmpDirectory = settings.getTmpDir();
+            if (StringUtils.isNotBlank(tmpDirectory)) {
+                String tmpDir = " --tmp-dir ";
+                m_backup.append(tmpDir).append(tmpDirectory);
+                m_restore.append(tmpDir).append(tmpDirectory);
+            }
             if (settings.isKeepDomain()) {
                 m_restore.append(" --domain ")
                          .append(m_domainManager.getDomain().getName());
@@ -145,6 +151,10 @@ public class AdminContextImpl extends HibernateDaoSupport implements AdminContex
                 }
             }
         }
+    }
+
+    protected StringBuilder getBackup() {
+        return m_backup;
     }
 
     protected void setBackup(StringBuilder backup) {
@@ -217,13 +227,32 @@ public class AdminContextImpl extends HibernateDaoSupport implements AdminContex
         return getSettings().isAuthEmailAddress();
     }
 
+    public String getNewLdapUserGroupNamePrefix() {
+        return getSettings().getNewLdapUserGroupNamePrefix();
+    }
+
     @Required
     public void setDomainManager(DomainManager domainManager) {
         m_domainManager = domainManager;
     }
 
     @Override
-    public boolean isSystemAuditEnabled() {
-        return AdminSettings.isSystemAuditEnabled();
+    public boolean isHazelcastEnabled() {
+        return (Boolean) getSettings().getSettingTypedValue(AdminSettings.HAZELCAST_NOTIFICATION);
+    }
+
+    @Override
+    public boolean isSyncExtAvatar() {
+        return (Boolean) getSettings().getSettingTypedValue(AdminSettings.EXT_AVATAR_SYNC);
+    }
+
+    @Override
+    public boolean isAllowSubscriptionsToSelf() {
+        return (Boolean) getSettings().isAllowSubscriptionsToSelf();
+    }
+
+    @Override
+    public int getStripUserName() {
+        return getSettings().getStripUsername();
     }
 }

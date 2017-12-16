@@ -16,7 +16,6 @@
  */
 package org.sipfoundry.commons.userdb;
 
-import static org.sipfoundry.commons.mongo.MongoConstants.ACCOUNT;
 import static org.sipfoundry.commons.mongo.MongoConstants.ACTIVEGREETING;
 import static org.sipfoundry.commons.mongo.MongoConstants.ALIAS;
 import static org.sipfoundry.commons.mongo.MongoConstants.ALIASES;
@@ -26,6 +25,8 @@ import static org.sipfoundry.commons.mongo.MongoConstants.ALT_EMAIL;
 import static org.sipfoundry.commons.mongo.MongoConstants.ALT_IM_ID;
 import static org.sipfoundry.commons.mongo.MongoConstants.ALT_NOTIFICATION;
 import static org.sipfoundry.commons.mongo.MongoConstants.ATTACH_AUDIO;
+import static org.sipfoundry.commons.mongo.MongoConstants.AUTO_ENTER_PIN_EXTENSION;
+import static org.sipfoundry.commons.mongo.MongoConstants.AUTO_ENTER_PIN_EXTERNAL;
 import static org.sipfoundry.commons.mongo.MongoConstants.AVATAR;
 import static org.sipfoundry.commons.mongo.MongoConstants.BUTTONS;
 import static org.sipfoundry.commons.mongo.MongoConstants.CALL_FROM_ANY_IM;
@@ -39,6 +40,7 @@ import static org.sipfoundry.commons.mongo.MongoConstants.CONF_NAME;
 import static org.sipfoundry.commons.mongo.MongoConstants.CONF_OWNER;
 import static org.sipfoundry.commons.mongo.MongoConstants.CONF_PIN;
 import static org.sipfoundry.commons.mongo.MongoConstants.CONTACT;
+import static org.sipfoundry.commons.mongo.MongoConstants.DAYS_TO_KEEP_VM;
 import static org.sipfoundry.commons.mongo.MongoConstants.DESCR;
 import static org.sipfoundry.commons.mongo.MongoConstants.DIALPAD;
 import static org.sipfoundry.commons.mongo.MongoConstants.DISPLAY_NAME;
@@ -47,6 +49,7 @@ import static org.sipfoundry.commons.mongo.MongoConstants.EMAIL;
 import static org.sipfoundry.commons.mongo.MongoConstants.ENTITY_NAME;
 import static org.sipfoundry.commons.mongo.MongoConstants.FAX_NUMBER;
 import static org.sipfoundry.commons.mongo.MongoConstants.FORCE_PIN_CHANGE;
+import static org.sipfoundry.commons.mongo.MongoConstants.FORWARD_DELETE_VOICEMAIL;
 import static org.sipfoundry.commons.mongo.MongoConstants.GROUPS;
 import static org.sipfoundry.commons.mongo.MongoConstants.HASHED_PASSTOKEN;
 import static org.sipfoundry.commons.mongo.MongoConstants.HOME_CITY;
@@ -55,7 +58,6 @@ import static org.sipfoundry.commons.mongo.MongoConstants.HOME_PHONE_NUMBER;
 import static org.sipfoundry.commons.mongo.MongoConstants.HOME_STATE;
 import static org.sipfoundry.commons.mongo.MongoConstants.HOME_STREET;
 import static org.sipfoundry.commons.mongo.MongoConstants.HOME_ZIP;
-import static org.sipfoundry.commons.mongo.MongoConstants.HOST;
 import static org.sipfoundry.commons.mongo.MongoConstants.HOTELING;
 import static org.sipfoundry.commons.mongo.MongoConstants.ID;
 import static org.sipfoundry.commons.mongo.MongoConstants.IDENTITY;
@@ -82,25 +84,21 @@ import static org.sipfoundry.commons.mongo.MongoConstants.OFFICE_STREET;
 import static org.sipfoundry.commons.mongo.MongoConstants.OFFICE_ZIP;
 import static org.sipfoundry.commons.mongo.MongoConstants.OPERATOR;
 import static org.sipfoundry.commons.mongo.MongoConstants.PASSTOKEN;
-import static org.sipfoundry.commons.mongo.MongoConstants.PASSWD;
 import static org.sipfoundry.commons.mongo.MongoConstants.PERMISSIONS;
 import static org.sipfoundry.commons.mongo.MongoConstants.PERSONAL_ATT;
 import static org.sipfoundry.commons.mongo.MongoConstants.PINTOKEN;
 import static org.sipfoundry.commons.mongo.MongoConstants.PLAY_DEFAULT_VM;
-import static org.sipfoundry.commons.mongo.MongoConstants.PORT;
 import static org.sipfoundry.commons.mongo.MongoConstants.RELATION;
 import static org.sipfoundry.commons.mongo.MongoConstants.SPEEDDIAL;
-import static org.sipfoundry.commons.mongo.MongoConstants.SYNC;
 import static org.sipfoundry.commons.mongo.MongoConstants.TIMEZONE;
-import static org.sipfoundry.commons.mongo.MongoConstants.TLS;
 import static org.sipfoundry.commons.mongo.MongoConstants.UID;
+import static org.sipfoundry.commons.mongo.MongoConstants.UNIFIED_MESSAGING_LANGUAGE;
 import static org.sipfoundry.commons.mongo.MongoConstants.USERBUSYPROMPT;
 import static org.sipfoundry.commons.mongo.MongoConstants.USER_LOCATION;
 import static org.sipfoundry.commons.mongo.MongoConstants.VALID_USER;
 import static org.sipfoundry.commons.mongo.MongoConstants.VOICEMAILTUI;
 import static org.sipfoundry.commons.mongo.MongoConstants.VOICEMAIL_ENABLED;
 import static org.sipfoundry.commons.mongo.MongoConstants.VOICEMAIL_PINTOKEN;
-import static org.sipfoundry.commons.mongo.MongoConstants.UNIFIED_MESSAGING_LANGUAGE;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -117,7 +115,6 @@ import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.sipfoundry.commons.mongo.MongoConstants;
-import org.sipfoundry.commons.userdb.User.EmailFormats;
 
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
@@ -301,6 +298,40 @@ public class ValidUsers {
             }
         }
         return extractValidUser(aliasResult);
+    }
+
+    /**
+     * Retrieve a specific user based on their Cell Phone or Home Phone (as defined on user's contact information)
+     * which has the Auto Enter Pin from External Number permission set to true. <br>
+     * If the method finds more than 1 user who share the same external number it will return null;
+     */
+    public User getUserWithAutoEnterPinByExternalNumber(String externalNumber, int matchLastDigits) {
+        if (externalNumber == null) {
+            return null;
+        }
+        QueryBuilder query = QueryBuilder.start(VALID_USER).is(Boolean.TRUE);
+        externalNumber = getExternalNumberLastDigits(externalNumber, matchLastDigits);
+        Pattern cellPattern = Pattern.compile(".*" + externalNumber);
+        BasicDBObject cell = new BasicDBObject(CELL_PHONE_NUMBER, cellPattern);
+        BasicDBObject home = new BasicDBObject(HOME_PHONE_NUMBER, cellPattern);
+        query.or(cell, home);
+        query.and(AUTO_ENTER_PIN_EXTERNAL).is("1");
+        DBObject queryUserName = query.get();
+        DBCursor result = getEntityCollection().find(queryUserName);
+        if (result != null && result.size() == 1) {
+            return extractValidUser(result.one());
+        }
+        return null;
+    }
+
+    private String getExternalNumberLastDigits(String externalNumber, int matchLastDigits) {
+        String externalNumberToMatch;
+        if (matchLastDigits == 0 || externalNumber == null || externalNumber.length() < matchLastDigits) {
+            externalNumberToMatch = externalNumber;
+        } else {
+            externalNumberToMatch = externalNumber.substring(externalNumber.length() - matchLastDigits);
+        }
+        return externalNumberToMatch;
     }
 
     public User getUserByConferenceName(String conferenceName) {
@@ -706,6 +737,11 @@ public class ValidUsers {
         }
 
         user.setVoicemailTui(getStringValue(obj, VOICEMAILTUI));
+
+        if (getStringValue(obj, FORWARD_DELETE_VOICEMAIL) != null) {
+            user.setForwardDeleteVoicemail(getStringValue(obj, FORWARD_DELETE_VOICEMAIL));
+        }
+
         user.setEmailAddress(getStringValue(obj, EMAIL));
         if (obj.keySet().contains(NOTIFICATION)) {
             user.setEmailFormat(getStringValue(obj, NOTIFICATION));
@@ -718,8 +754,24 @@ public class ValidUsers {
         }
         user.setAltAttachAudioToEmail(Boolean.valueOf(getStringValue(obj, ALT_ATTACH_AUDIO)));
 
-        if (getStringValue(obj, FORCE_PIN_CHANGE) != null) {
-            user.setForcePinChange(getStringValue(obj, FORCE_PIN_CHANGE));
+        String forcePinChange = getStringValue(obj, FORCE_PIN_CHANGE);
+        if (forcePinChange != null) {
+            user.setForcePinChange(forcePinChange);
+        }
+
+        String autoEnterPinExtension = getStringValue(obj, AUTO_ENTER_PIN_EXTENSION);
+        if (autoEnterPinExtension != null) {
+            user.setAutoEnterPinExtension(autoEnterPinExtension);
+        }
+
+        String autoEnterPinExternal = getStringValue(obj, AUTO_ENTER_PIN_EXTERNAL);
+        if (autoEnterPinExternal != null) {
+            user.setAutoEnterPinExternal(autoEnterPinExternal);
+        }
+
+        Integer daysToKeepVM = getIntegerValue(obj, DAYS_TO_KEEP_VM);
+        if (daysToKeepVM != null) {
+            user.setDaysToKeepVM(daysToKeepVM);
         }
 
         BasicDBList aliasesObj = (BasicDBList) obj.get(ALIASES);
@@ -732,27 +784,6 @@ public class ValidUsers {
                 }
             }
             user.setAliases(aliases);
-        }
-
-        if (obj.keySet().contains(SYNC)) {
-            ImapInfo imapInfo = new ImapInfo();
-            imapInfo.setSynchronize(Boolean.valueOf(getStringValue(obj, SYNC)));
-            imapInfo.setHost(getStringValue(obj, HOST));
-            imapInfo.setPort(getStringValue(obj, PORT));
-            imapInfo.setUseTLS(Boolean.valueOf(getStringValue(obj, TLS)));
-            imapInfo.setAccount(getStringValue(obj, ACCOUNT));
-            imapInfo.setPassword(getStringValue(obj, PASSWD));
-            user.setImapInfo(imapInfo);
-            if (imapInfo.isSynchronize()) {
-                user.setEmailFormat(EmailFormats.FORMAT_IMAP);
-                user.setAttachAudioToEmail(true);
-            }
-            // // If account isn't set, use the e-mail username
-            if (imapInfo.getAccount() == null || imapInfo.getAccount().length() == 0) {
-                if (user.getEmailAddress() != null) {
-                    imapInfo.setAccount(user.getEmailAddress().split("@")[0]);
-                }
-            }
         }
 
         // contact info related data
@@ -844,10 +875,19 @@ public class ValidUsers {
         return user;
     }
 
-    private static String getStringValue(DBObject obj, String key) {
+    public static String getStringValue(DBObject obj, String key) {
         if (obj.keySet().contains(key)) {
             if (obj.get(key) != null) {
                 return obj.get(key).toString();
+            }
+        }
+        return null;
+    }
+
+    public static Integer getIntegerValue(DBObject obj, String key) {
+        if (obj.keySet().contains(key)) {
+            if (obj.get(key) != null) {
+                return Integer.parseInt(obj.get(key).toString());
             }
         }
         return null;
@@ -1013,6 +1053,15 @@ public class ValidUsers {
             queue.add(first); // Put first back (its now last)
             u.getDialPatterns().add(mashup);
         }
+    }
+
+    public boolean isValidIdentity(String uri) {
+        if (uri == null) {
+            return false;
+        }
+        DBObject queryIdent = QueryBuilder.start(IDENTITY).is(uri).get();
+        long result = getEntityCollection().count(queryIdent);
+        return result > 0;
     }
 
     public DB getImdb() {

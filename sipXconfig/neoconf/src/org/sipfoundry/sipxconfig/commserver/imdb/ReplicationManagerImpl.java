@@ -407,8 +407,21 @@ public class ReplicationManagerImpl extends SipxHibernateDaoSupport implements R
             }
             LOG.debug(String.format("Update query: %s: ", updateQ));
             LOG.debug(String.format("Remove query: %s: ", removeQ));
-            DBObject set = new BasicDBObject("$set", updateQ).append("$unset", removeQ);
-            getDbCollection().update(toUpdate, set);
+            BasicDBObject set = new BasicDBObject();
+            BasicDBObject emptyObject = new BasicDBObject();
+            boolean isUpdated = false;
+            if (!updateQ.equals(emptyObject)) {
+                set.append("$set", updateQ);
+                isUpdated = true;
+            }
+            if (!removeQ.equals(emptyObject)) {
+                set.append("$unset", removeQ);
+                isUpdated = true;
+            }
+            if (isUpdated) {
+                LOG.debug(String.format("Final query: %s: ", set));
+                getDbCollection().update(toUpdate, set);
+            }
         }
 
     }
@@ -436,17 +449,19 @@ public class ReplicationManagerImpl extends SipxHibernateDaoSupport implements R
             long start = System.currentTimeMillis();
             Map<String, ReplicableProvider> beanMap = m_beanFactory.getBeansOfType(ReplicableProvider.class);
             for (ReplicableProvider provider : beanMap.values()) {
-                for (Replicable entity : provider.getReplicables()) {
-                    if (entity != null) {
-                        if (!entity.getDataSets().contains(ds)) { /*
-                                                                   * Callable used for the
-                                                                   * replication of members in a
-                                                                   * group
-                                                                   */
+                if (provider instanceof Proxy) {
+                    for (Replicable entity : provider.getReplicables()) {
+                        if (entity != null) {
+                            if (!entity.getDataSets().contains(ds)) { /*
+                                                                       * Callable used for the
+                                                                       * replication of members in a
+                                                                       * group
+                                                                       */
 
-                            continue;
+                                continue;
+                            }
+                            replicateEntity(entity);
                         }
-                        replicateEntity(entity);
                     }
                 }
             }

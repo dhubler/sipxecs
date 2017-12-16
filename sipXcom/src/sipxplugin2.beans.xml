@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "classpath:org/sipfoundry/sipxconfig/site/spring-beans.dtd">
+<beans>
+
+	<bean id="sipxcomI18n"
+		class="org.sipfoundry.sipxconfig.PluggableResourceBundleMessageSource">
+		<property name="basename" value="sipxcom" />
+	</bean>
+
+	<bean id="skinProperties" class="org.sipfoundry.sipxconfig.site.skin.SkinProperties">
+		<property name="properties">
+			<props>
+				<prop key="logo.png">sipXcomAdminLogo.png</prop>
+				<prop key="favicon.ico">sipXcomLoginScreen.png</prop>
+			</props>
+		</property>
+	</bean>
+</beans>

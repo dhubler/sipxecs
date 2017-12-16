@@ -16,6 +16,7 @@ import java.util.Set;
 
 import org.apache.velocity.VelocityContext;
 import org.sipfoundry.sipxconfig.acccode.AuthCodes;
+import org.sipfoundry.sipxconfig.callback.CallbackOnBusy;
 import org.sipfoundry.sipxconfig.commserver.Location;
 import org.sipfoundry.sipxconfig.conference.Bridge;
 import org.sipfoundry.sipxconfig.conference.Conference;
@@ -37,19 +38,22 @@ public class DefaultContextConfiguration extends AbstractFreeswitchConfiguration
     private FreeswitchExtensionCollector m_freeswitchExtensionCollector;
     private FeatureManager m_featureManager;
     private ParkOrbitContext m_parkOrbitContext;
+    private String m_fsEtcDir;
 
     @Override
     public void write(Writer writer, Location location, FreeswitchSettings settings) throws IOException {
         Bridge bridge = m_conferenceContext.getBridgeByServer(location.getFqdn());
         boolean authCodes = m_featureManager.isFeatureEnabled(AuthCodes.FEATURE, location);
+        boolean callback = m_featureManager.isFeatureEnabled(CallbackOnBusy.FEATURE, location);
         boolean park = m_featureManager.isFeatureEnabled(ParkOrbitContext.FEATURE, location);
         List<FreeswitchExtension> extensions = m_freeswitchExtensionCollector.getExtensions();
-        write(writer, location, bridge, authCodes, park, m_parkOrbitContext.getParkOrbits(), extensions,
-            settings.isBlindTransferEnabled());
+        write(writer, location, bridge, authCodes, callback, park, m_parkOrbitContext.getParkOrbits(), extensions,
+            settings.isBlindTransferEnabled(), settings.isSimplifyEnabled(), settings.getMaxForwards());
     }
 
-    void write(Writer writer, Location location, Bridge bridge, boolean authCodes, boolean park, Collection orbits,
-        List<FreeswitchExtension> extensions, boolean blindTransfer)
+    void write(Writer writer, Location location, Bridge bridge, boolean authCodes, boolean callback, boolean park,
+            Collection orbits, List<FreeswitchExtension> extensions, boolean blindTransfer, boolean simplify,
+            Integer maxForwards)
         throws IOException {
         VelocityContext context = new VelocityContext();
         if (bridge != null) {
@@ -59,6 +63,9 @@ public class DefaultContextConfiguration extends AbstractFreeswitchConfiguration
         if (authCodes) {
             context.put("acccode", true);
         }
+        if (callback) {
+            context.put("callback", true);
+        }
         if (park) {
             context.put("park", true);
             context.put("orbits", orbits);
@@ -66,10 +73,17 @@ public class DefaultContextConfiguration extends AbstractFreeswitchConfiguration
         if (blindTransfer) {
             context.put("blindTransfer", true);
         }
+        if (simplify) {
+            context.put("simplify", true);
+        }
+        if (maxForwards != null) {
+            context.put("maxForwards", maxForwards);
+        }
         context.put("domainName", Domain.getDomain().getName());
         context.put("location", location);
         addAdditionalLocations(context, location);
         context.put("dollar", "$");
+        context.put("conferenceExitScript", m_fsEtcDir + "conferenceExit.lua");
         getFreeswitchExtensions(context, location, extensions);
         write(writer, context);
     }
@@ -126,5 +140,9 @@ public class DefaultContextConfiguration extends AbstractFreeswitchConfiguration
     @Required
     public void setParkOrbitContext(ParkOrbitContext context) {
         m_parkOrbitContext = context;
+    }
+
+    public void setFreeswitchEtcDir(String directory) {
+        m_fsEtcDir = directory;
     }
 }

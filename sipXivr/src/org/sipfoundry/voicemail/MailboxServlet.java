@@ -156,6 +156,20 @@ public class MailboxServlet extends HttpServlet {
                                 }
                             }
                         }
+                        
+                        //applicable when called from within email body
+                        if (action.equals("movetodeleted")) {
+                            if (method.equals(METHOD_GET)) {
+                                try {
+                                    mailboxManager.markMessageHeard(user, messageId);
+                                    mailboxManager.moveMessageToFolder(user, messageId, Folder.DELETED.toString());
+                                    response.setContentType("text/xml");
+                                    pw.format("<html>Message id: %s for user: %s was moved to deleted folder</html>", messageId, user.getUserName());
+                                } catch (MessageNotFoundException ex) {
+                                    response.sendError(404, "messageId not found");
+                                }
+                            }
+                        }                        
 
                         if (action.equals("subject")) {
                             if (method.equals(METHOD_PUT)) {
@@ -343,11 +357,12 @@ public class MailboxServlet extends HttpServlet {
             authorExtension = StringUtils.defaultIfEmpty(ValidUsers.getUserPart(uri), StringUtils.EMPTY);
             pw.format(
                     "<message id=\"%s\" heard=\"%s\" urgent=\"%s\" folder=\"%s\" duration=\"%s\" contentlength=\"%s\" received=\"%s\" " +
-                    "author=\"%s\" authorExtension=\"%s\" username=\"%s\" format=\"%s\"/>\n",
+                    "author=\"%s\" authorExtension=\"%s\" username=\"%s\" format=\"%s\" callerIdName=\"%s\" callerIdNumber=\"%s\"/>\n",
                     message.getMessageId(), !message.isUnHeard(), message.isUrgent(), folder,
                     descriptor.getDurationSecsLong(), StringUtils.defaultIfEmpty(descriptor.getContentLength(), StringUtils.EMPTY),
                     descriptor.getTimeStampDate().getTime(), HtmlUtils.htmlEscapeHex(authorDisplayName),
-                    HtmlUtils.htmlEscapeHex(authorExtension), message.getUserName(), descriptor.getAudioFormat());
+                    HtmlUtils.htmlEscapeHex(authorExtension), message.getUserName(), descriptor.getAudioFormat(), 
+                    descriptor.getCallerIdName(), descriptor.getCallerIdNumber());
         }
     }
 
@@ -365,12 +380,12 @@ public class MailboxServlet extends HttpServlet {
         String fromUri = StringUtils.substringBetween(uri, "<", ">");
         pw.format(
                 "<message id=\"%s\" heard=\"%s\" urgent=\"%s\" folder=\"%s\" duration=\"%s\" contentlength=\"%s\" received=\"%s\" " +
-                "fromUri=\"%s\" author=\"%s\" authorExtension=\"%s\" subject=\"%s\" username=\"%s\" format=\"%s\"/>\n",
+                "fromUri=\"%s\" author=\"%s\" authorExtension=\"%s\" subject=\"%s\" username=\"%s\" format=\"%s\" callerIdName=\"%s\" callerIdNumber=\"%s\"/>\n",
                 message.getMessageId(), !message.isUnHeard(), message.isUrgent(), folder,
                 descriptor.getDurationSecsLong(), StringUtils.defaultIfEmpty(descriptor.getContentLength(),
                 StringUtils.EMPTY), descriptor.getTimeStampDate().getTime(), fromUri,
                 HtmlUtils.htmlEscapeHex(authorDisplayName), HtmlUtils.htmlEscapeHex(authorExtension) ,HtmlUtils.htmlEscapeHex(descriptor.getSubject()),
-                message.getUserName(), descriptor.getAudioFormat());
+                message.getUserName(), descriptor.getAudioFormat(), descriptor.getCallerIdName(), descriptor.getCallerIdNumber());
     }
 
 }

@@ -35,6 +35,9 @@ public class FreeswitchSettings extends SettingsWithLocation implements DeployCo
     private static final String FREESWITCH_SIP_PORT = "freeswitch-config/FREESWITCH_SIP_PORT";
     private static final String FREESWITCH_CODECS = "freeswitch-config/FREESWITCH_CODECS";
     private static final String FREESWITCH_BLIND_TRANSFER = "freeswitch-config/FREESWITCH_BLIND_TRANSFER";
+    private static final String FREESWITCH_SIMPLIFY = "freeswitch-config/FREESWITCH_SIMPLIFY";
+    private static final String FREESWITCH_MAX_FORWARDS = "freeswitch-config/FREESWITCH_MAX_FORWARDS";
+    private static final String FREESWITCH_CORE = "freeswitch-config/FREESWITCH_CORE";
 
     public int getEventSocketPort() {
         return 8084; // not configurable at this time, no particular reason. --Douglas
@@ -42,6 +45,10 @@ public class FreeswitchSettings extends SettingsWithLocation implements DeployCo
 
     public int getAccEventSocketPort() {
         return 8184; // not configurable at this time, no particular reason. --Douglas
+    }
+
+    public int getCallbackEventSocketPort() {
+        return 8284;
     }
 
     public int getXmlRpcPort() {
@@ -54,6 +61,21 @@ public class FreeswitchSettings extends SettingsWithLocation implements DeployCo
 
     public boolean isBlindTransferEnabled() {
         return (Boolean) getSettingTypedValue(FREESWITCH_BLIND_TRANSFER);
+    }
+
+    public boolean isSimplifyEnabled() {
+        return (Boolean) getSettingTypedValue(FREESWITCH_SIMPLIFY);
+    }
+
+    public Integer getMaxForwards() {
+        if (getSettingTypedValue(FREESWITCH_MAX_FORWARDS) == null) {
+            return null;
+        }
+        return (Integer) getSettingTypedValue(FREESWITCH_MAX_FORWARDS);
+    }
+
+    public boolean isCoreEnabled() {
+        return (Boolean) getSettingTypedValue(FREESWITCH_CORE);
     }
 
     public class Defaults {

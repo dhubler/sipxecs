@@ -17,6 +17,7 @@
 
 // APPLICATION INCLUDES
 #include <utl/UtlHashBag.h>
+#include <utl/UtlBlockingQueue.h>
 #include <os/OsServerTask.h>
 #include <net/SipUserAgentBase.h>
 #include <net/SipMessage.h>
@@ -170,9 +171,17 @@ public:
     friend class SipTransaction;
     friend class SipUdpServer;
     friend int SipUdpServer::run(void* runArg);
+    
+    struct TransactionInfo
+    {
+      UtlString hash;
+      SipTransaction* ptr;
+    };
 
+    typedef boost::function<bool(SipMessage&,const UtlString&,int)> Preprocessor;
     typedef boost::function<bool(SipMessage*)> DispatchEvaluator;
     typedef boost::function<void(SipTransaction*, const SipMessage&, SipMessage&)> FinalResponseHandler;
+    typedef UtlBlockingQueue<TransactionInfo*> MessageCancelQueue;
     
     enum EventSubTypes
     {
@@ -715,10 +724,16 @@ public:
     void setPreDispatchEvaluator(const DispatchEvaluator& preDispatch);
     
     void setFinalResponseHandler(const FinalResponseHandler& finalResponseHandler);
+    
+    void setPreprocesor(const Preprocessor& preprocessor);
+    
+    Preprocessor& preprocessor();
 
     const SipTransactionList& getSipTransactions() const;
     
     void onFinalResponse(SipTransaction* pTransaction, const SipMessage& request, SipMessage& finalResponse);
+    
+    void enqueueCancelMessage(SipTransaction* pTransaction);
 
 /* //////////////////////////// PROTECTED ///////////////////////////////// */
 protected:
@@ -780,6 +795,7 @@ protected:
 
     void garbageCollection();
     
+    void handleCancelQueue();
     
 /* //////////////////////////// PRIVATE /////////////////////////////////// */
 private:
@@ -894,6 +910,9 @@ private:
     int _maxTransactionCount;
     DispatchEvaluator _preDispatch;
     FinalResponseHandler _finalResponseHandler;
+    Preprocessor _preprocessor;
+    MessageCancelQueue _cancelQueue;
+    boost::thread* _pCancelQueueThread;
 
     //! Disabled copy constructor
     SipUserAgent(const SipUserAgent& rSipUserAgent);
@@ -939,6 +958,16 @@ inline void SipUserAgent::setPreDispatchEvaluator(const DispatchEvaluator& preDi
 inline void SipUserAgent::setFinalResponseHandler(const FinalResponseHandler& finalResponseHandler)
 {
   _finalResponseHandler = finalResponseHandler;
+}
+
+inline void SipUserAgent::setPreprocesor(const Preprocessor& preprocessor)
+{
+  _preprocessor = preprocessor;
+}
+
+inline SipUserAgent::Preprocessor& SipUserAgent::preprocessor()
+{
+  return _preprocessor;
 }
 
 

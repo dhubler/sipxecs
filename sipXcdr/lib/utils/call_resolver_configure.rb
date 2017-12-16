@@ -89,13 +89,14 @@ class CallResolverConfigure
     # so we can log messages in the methods that are called here.
 
     @db_user = config.fetch('SIP_CALLRESOLVER_DB_USER', 'postgres')
+    @db_password = config.fetch('SIP_CALLRESOLVER_DB_PASSWORD', '')
 
     # default values for db connection info
-    @local_db_url = DatabaseUrl.new(:username => @db_user)
+    @local_db_url = DatabaseUrl.new(:username => @db_user, :password => @db_password)
 
     # :TODO: read CDR database URL params from the Call Resolver config file
     # rather than just hardwiring default values.
-    @cdr_database_url = DatabaseUrl.new(:username => @db_user)
+    @cdr_database_url = DatabaseUrl.new(:username => @db_user, :password => @db_password)
 
     # These two methods must get called in this order
     @cse_hosts, @ha = get_cse_hosts_config
@@ -261,7 +262,7 @@ class CallResolverConfigure
     return [ @cdr_database_url ] if cse_hosts.empty?
     # Build the list of CSE DB URLs.
     cse_hosts.collect do |cse_host|
-      DatabaseUrl.new(:host =>cse_host.host, :port => cse_host.port, :username => @db_user)
+      DatabaseUrl.new(:host =>cse_host.host, :port => cse_host.port, :username => @db_user, :password => @db_password)
     end
   end
 
@@ -292,11 +293,12 @@ class CallResolverConfigure
       host_port = port.to_i
       raise ConfigException, "Port for #{host} is invalid." if host_port == 0
       cse_hosts << CseHost.new(host, host_port)
-      log.debug("cse_hosts: host name #{host}, host port: #{port}")
+      log.debug("call_resolver_configure.rb:: cse_hosts: host name #{host}, host port: #{port}")
       # If at least one of the hosts != 'localhost' we are HA enabled
     end
     ha = cse_hosts.length > 1
-    log.debug("Found host other than localhost - enable HA") if ha
+    log.info("call_resolver_configure,rb:: Did not find other host than localhost - keeping HA disabled") unless ha
+    log.info("call_resolver_configure.rb:: Found host other than localhost - enable HA") if ha
     return cse_hosts, ha
   end
 

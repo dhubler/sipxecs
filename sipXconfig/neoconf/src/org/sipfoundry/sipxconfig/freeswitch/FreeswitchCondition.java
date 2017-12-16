@@ -16,6 +16,7 @@
  */
 package org.sipfoundry.sipxconfig.freeswitch;
 
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -24,8 +25,9 @@ import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.sipfoundry.sipxconfig.common.BeanWithId;
 import org.sipfoundry.sipxconfig.common.NamedObject;
+import org.sipfoundry.sipxconfig.search.IndexedBean;
 
-public class FreeswitchCondition extends BeanWithId implements NamedObject {
+public class FreeswitchCondition extends BeanWithId implements NamedObject, IndexedBean {
 
     private String m_field;
     private String m_expression;
@@ -111,5 +113,12 @@ public class FreeswitchCondition extends BeanWithId implements NamedObject {
 
     @Override
     public void setName(String name) {
+    }
+
+    @Override
+    public Set<String> getIndexValues() {
+        Set<String> values = new HashSet<String>();
+        values.add(getExtension());
+        return values;
     }
 }

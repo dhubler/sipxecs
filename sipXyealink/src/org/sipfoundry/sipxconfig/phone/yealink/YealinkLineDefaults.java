@@ -19,6 +19,7 @@ package org.sipfoundry.sipxconfig.phone.yealink;
 
 import org.sipfoundry.sipxconfig.address.Address;
 import org.sipfoundry.sipxconfig.common.User;
+import org.sipfoundry.sipxconfig.common.SipUri;
 import org.sipfoundry.sipxconfig.device.DeviceDefaults;
 import org.sipfoundry.sipxconfig.phone.Line;
 import org.sipfoundry.sipxconfig.setting.SettingEntry;
@@ -36,7 +37,11 @@ public class YealinkLineDefaults {
 
     @SettingEntry(paths = {
             YealinkConstants.USER_ID_V6X_SETTING,
-            YealinkConstants.USER_ID_V7X_SETTING
+            YealinkConstants.USER_ID_V7X_SETTING,
+            YealinkConstants.USER_ID_V8X_SETTING,
+            YealinkConstants.LABEL_V6X_SETTING,
+            YealinkConstants.LABEL_V7X_SETTING,
+            YealinkConstants.LABEL_V8X_SETTING
             })
     public String getUserName() {
         String userName = null;
@@ -50,6 +55,7 @@ public class YealinkLineDefaults {
     @SettingEntry(paths = {
             YealinkConstants.AUTH_ID_V6X_SETTING,
             YealinkConstants.AUTH_ID_V7X_SETTING,
+            YealinkConstants.AUTH_ID_V8X_SETTING
             })
     public String getAuthId() {
         String userName = null;
@@ -62,7 +68,8 @@ public class YealinkLineDefaults {
 
     @SettingEntry(paths = {
             YealinkConstants.DISPLAY_NAME_V6X_SETTING,
-            YealinkConstants.DISPLAY_NAME_V7X_SETTING
+            YealinkConstants.DISPLAY_NAME_V7X_SETTING,
+            YealinkConstants.DISPLAY_NAME_V8X_SETTING
             })
     public String getDisplayName() {
         String displayName = null;
@@ -75,7 +82,8 @@ public class YealinkLineDefaults {
 
     @SettingEntry(paths = {
             YealinkConstants.PASSWORD_V6X_SETTING,
-            YealinkConstants.PASSWORD_V7X_SETTING
+            YealinkConstants.PASSWORD_V7X_SETTING,
+            YealinkConstants.PASSWORD_V8X_SETTING
             })
     public String getPassword() {
         String password = null;
@@ -88,7 +96,8 @@ public class YealinkLineDefaults {
 
     @SettingEntry(paths = {
             YealinkConstants.REGISTRATION_SERVER_HOST_V6X_SETTING,
-            YealinkConstants.REGISTRATION_SERVER_HOST_V7X_SETTING
+            YealinkConstants.REGISTRATION_SERVER_HOST_V7X_SETTING,
+            YealinkConstants.REGISTRATION_SERVER_HOST_V8X_SETTING
             })
     public String getRegistrationServer() {
         return m_defaults.getDomainName();
@@ -109,6 +118,8 @@ public class YealinkLineDefaults {
     @SettingEntry(paths = {
             YealinkConstants.OUTBOUND_HOST_V6X_SETTING,
             YealinkConstants.BACKUP_OUTBOUND_HOST_V6X_SETTING,
+            YealinkConstants.OUTBOUND_HOST_V7X_SETTING,
+            YealinkConstants.BACKUP_OUTBOUND_HOST_V7X_SETTING,
             YealinkConstants.OUTBOUND_HOST_V7X_SETTING,
             YealinkConstants.BACKUP_OUTBOUND_HOST_V7X_SETTING
             })
@@ -145,6 +156,34 @@ public class YealinkLineDefaults {
             mohUri = m_defaults.getMusicOnHoldUri();
         }
         return mohUri;
+    }
+
+	@SettingEntry(paths = {
+            YealinkConstants.ADVANCED_BLF_SERVER_URI_V7X_SETTING,
+            YealinkConstants.ADVANCED_BLF_SERVER_URI_V8X_SETTING})
+    public String getRlsServerUri() {
+        String rlsUri;
+        User u = m_line.getUser();
+        if (u != null) {
+            rlsUri = SipUri.format("~~rl~C~"+u.getUserName(), m_defaults.getDomainName(), false);
+        } else {
+            rlsUri = "";
+        }
+        return rlsUri;
+    }
+
+	@SettingEntry(paths = {
+            YealinkConstants.ACD_USER_ID_V7X_SETTING,
+        YealinkConstants.ACD_USER_ID_V8X_SETTING})
+    public String getAcdUserId() {
+        String acdUserId;
+        User u = m_line.getUser();
+        if (u != null) {
+            acdUserId = u.getUserName();
+        } else {
+            acdUserId = "";
+        }
+        return acdUserId;
     }
 
 }

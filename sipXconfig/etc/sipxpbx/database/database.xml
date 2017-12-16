@@ -471,6 +471,37 @@
     <antcall target="insert_default_dns_view" />
     <antcall target="system-audit" />
     <antcall target="config-change-value" />
+    <antcall target="openacd-permission-profile" />
+    <antcall target="openacd-custom-header" />
+  	<antcall target="delete-verisign-crt-crt" />
+    <antcall target="openacd-permission-constraint" />
+  	<antcall target="add-4.4-orbit-location" />
+  	<antcall target="update-expiration-time" />
+  	<antcall target="openacd-permission-update" />
+  	<antcall target="add_vm_server_port" />
+    <antcall target="openacd-permission-update2" />
+    <antcall target="openacd-permission-update3" />
+    <antcall target="openacd-add-pstn-agent" />
+    <antcall target="call-restrictions" />
+    <antcall target="add_vm_authorization" />
+    <antcall target="openacd-permission-update4" />
+  	<antcall target="add_location_call_restrictions" />
+    <antcall target="migrate-yealinkPhone-to-yealink" />
+    <antcall target="migrate-yealinkphoneVP49G-to-yealinkphoneSIPT49G" />
+  	<antcall target="add_location_location" />
+    <antcall target="remove_chat_meeting_setting" />
+  	<antcall target="system_audit_remove" />
+  	<antcall target="openacd_autologout_agent_group" />
+  	<antcall target="openacd_block_transfer_queue" />
+  	<antcall target="add_location_location_inbound" />
+  	<antcall target="add_fallback_branch" />
+    <antcall target="openacd-permission-update5" />
+  	<antcall target="modify-setting-value-table" />
+  	<antcall target="remove-voicemail-imap-settings" />
+  	<antcall target="add-release-on-ring-failure" />
+  	<antcall target="remove-firewall-rules" />
+    <antcall target="openacd-client-update" />
+  	<antcall target="remove-community" />
   </target>
 
   <target name="plugin-patches">
@@ -1430,8 +1461,108 @@
   <target name="config-change-value" unless="config-change-value">
     <db-patch patch="config-change-value"/>
   </target>
+  <target name="openacd-permission-profile" unless="openacd-permission-profile">
+    <db-patch patch="openacd-permission-profile"/>
+  </target>
+  <target name="openacd-custom-header" unless="openacd-custom-header">
+    <db-patch patch="openacd-custom-header"/>
+  </target>
+  <target name="delete-verisign-crt-crt" unless="delete-verisign-crt-crt">
+  	<db-patch patch="delete-verisign-crt-crt"/>
+  </target>
+  <target name="openacd-permission-constraint" unless="openacd-permission-constraint">
+    <db-patch patch="openacd-permission-constraint"/>
+  </target>
+  <target name="add-4.4-orbit-location" unless="add-4.4-orbit-location">
+  	<db-patch patch="add-4.4-orbit-location" />
+  </target>
+  <target name="update-expiration-time" unless="update-expiration-time">
+  	<mongodb-patch patch="update-expiration-time" />
+  </target>
+  <target name="openacd-permission-update" unless="openacd-permission-update">
+  	<db-patch patch="openacd-permission-update"/>
+  </target>
+  <target name="add_vm_server_port" unless="add_vm_server_port">
+  	<db-patch patch="add_vm_server_port"/>
+  </target>	
+  <target name="openacd-permission-update2" unless="openacd-permission-update2">
+    <db-patch patch="openacd-permission-update2"/>
+  </target>
+  <target name="openacd-permission-update3" unless="openacd-permission-update3">
+    <db-patch patch="openacd-permission-update3"/>
+  </target>
+  <target name="openacd-add-pstn-agent" unless="openacd-add-pstn-agent">
+    <db-patch patch="openacd-add-pstn-agent"/>
+  </target>
+  <target name="call-restrictions" unless="call-restrictions">
+    <db-patch patch="call-restrictions"/>
+  </target>
+  <target name="add_vm_authorization" unless="add_vm_authorization">
+  	<db-patch patch="add_vm_authorization"/>
+  </target>
+  <target name="openacd-permission-update4" unless="openacd-permission-update4">
+    <db-patch patch="openacd-permission-update4"/>
+  </target>
+  <target name="add_location_call_restrictions" unless="add_location_call_restrictions">
+  	<db-patch patch="add_location_call_restrictions"/>
+  </target>
+  <target name="migrate-yealinkPhone-to-yealink" unless="migrate-yealinkPhone-to-yealink">
+    <sipx-sql>
+      UPDATE "public"."phone" SET "bean_id"='yealink' WHERE ("bean_id"='yealinkPhone');
+    </sipx-sql>
+  </target>
+  <target name="migrate-yealinkphoneVP49G-to-yealinkphoneSIPT49G" unless="migrate-yealinkphoneVP49G-to-yealinkphoneSIPT49G">
+    <sipx-sql>
+      UPDATE "public"."phone" SET "model_id"='yealinkPhoneSIPT49G' WHERE ("model_id"='yealinkPhoneVP49G');
+    </sipx-sql>
+  </target>
+  <target name="add_location_location" unless="add_location_location">
+  	<db-patch patch="add_location_location"/>
+  </target>
+  <target name="remove_chat_meeting_setting" unless="remove_chat_meeting_setting">
+    <db-patch patch="remove_chat_meeting_setting"/>
+  </target>
+  <target name="system_audit_remove" unless="system_audit_remove">
+    <db-patch patch="system_audit_remove"/>
+  </target>
+  <target name="openacd_autologout_agent_group" unless="openacd_autologout_agent_group">
+    <db-patch patch="openacd_autologout_agent_group"/>
+  </target>
+  <target name="openacd_block_transfer_queue" unless="openacd_block_transfer_queue">
+    <db-patch patch="openacd_block_transfer_queue"/>
+  </target>
+  <target name="add_location_location_inbound" unless="add_location_location_inbound">
+	<db-patch patch="add_location_location_inbound"/>
+  </target>
+  <target name="add_fallback_branch" unless="add_fallback_branch">
+    <db-patch patch="add_fallback_branch"/>
+  </target>
+  <target name="openacd-permission-update5" unless="openacd-permission-update5">
+    <db-patch patch="openacd-permission-update5"/>
+  </target>
+  <target name="add_tmpdir_to_backup" unless="add_tmpdir_to_backup">
+    <db-patch patch="add_tmpdir_to_backup"/>
+  </target>
+  <target name="modify-setting-value-table" unless="modify-setting-value-table">
+    <db-patch patch="modify-setting-value-table"/>
+  </target>
+  <target name="remove-voicemail-imap-settings" unless="remove-voicemail-imap-settings">
+    <db-patch patch="remove-voicemail-imap-settings"/>
+  </target>
+  <target name="add-release-on-ring-failure" unless="add-release-on-ring-failure">
+    <db-patch patch="add-release-on-ring-failure"/>
+  </target>
+  <target name="remove-firewall-rules" unless="remove-firewall-rules">
+	<db-patch patch="remove-firewall-rules"/>
+  </target>
+  <target name="openacd-client-update" unless="openacd-client-update">
+    <db-patch patch="openacd-client-update"/>
+  </target>
+  <target name="remove-community" unless="remove-community">
+  	<db-patch patch="remove-community"/>
+  </target>
 
-  <!--
+	<!--
     - SUPPORT UTILITIES
   -->
   <!-- Run SQL on SIPXCONFIG database and update patch list if successful -->
@@ -1441,6 +1572,16 @@
       <sipx-sql>
         <transaction src="${sql.dir}/@{patch}.sql" />
       </sipx-sql>
+      <mark-patch-applied patch="@{patch}" />
+    </sequential>
+  </macrodef>
+
+  <macrodef name="mongodb-patch">
+    <attribute name="patch" />
+    <sequential>
+      <exec executable="mongo">
+        <arg line="${sql.dir}/@{patch}.js" />
+      </exec>
       <mark-patch-applied patch="@{patch}" />
     </sequential>
   </macrodef>

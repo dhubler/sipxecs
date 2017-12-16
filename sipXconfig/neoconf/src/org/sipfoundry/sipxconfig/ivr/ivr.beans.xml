@@ -8,6 +8,7 @@
 
   <bean id="ivrSettings" class="org.sipfoundry.sipxconfig.ivr.IvrSettings" parent="settingsBean">
     <property name="modelFilesContext" ref="modelFilesContext"/>
+    <property name="featureManager" ref="featureManager"/>
   </bean>
 
   <bean id="ivr" class="org.springframework.aop.framework.ProxyFactoryBean" parent="abstractDao">
@@ -45,6 +46,9 @@
     <property name="ivr" ref="ivr" />
     <property name="mwi" ref="mwi" />
     <property name="autoAttendantManager" ref="autoAttendantManager" />
+    <property name="adminContext" ref="adminContext" />
+    <property name="locationsManager" ref="locationsManager" />
+    <property name="fsRecordingContext" ref="fsRecordingContext" />
   </bean>
 
   <bean id="sipXivrMessages" class="org.springframework.context.support.ResourceBundleMessageSource">

@@ -61,6 +61,7 @@ public:
                                      const char* address,
                                      int port );
 
+   void setLogAuthCodes(bool logAuthCodes);
 /* //////////////////////////// PROTECTED ///////////////////////////////// */
 protected:
 
@@ -75,14 +76,26 @@ private:
    OsTimer*                  mpCleanupMapTimer;
    OsCallback*               mpCleanupTimeoutCallback;
    OsMutex                   mCallTransMutex;
+   bool _logAuthCodes;
    
    /// no copy constructor or assignment operator
    SipXProxyCseObserver(const SipXProxyCseObserver& rSipXProxyCseObserver);
    SipXProxyCseObserver operator=(const SipXProxyCseObserver& rSipXProxyCseObserver);
 
    static void CleanupTransMap(void* userData, const intptr_t eventData);
+
+   // When local phone is forwarded to mobile phone, it is CDR information is problematical.
+   // Use Hash map structure for hide forwarding call request uri with its session call id.
+   UtlHashMap mCallIdRequiestUriMap;
 };
 
+
 /* ============================ INLINE METHODS ============================ */
+
+
+inline void SipXProxyCseObserver::setLogAuthCodes(bool logAuthCodes)
+{
+  _logAuthCodes = logAuthCodes;
+}
 
 #endif  // _SipXProxyCseObserver_h_

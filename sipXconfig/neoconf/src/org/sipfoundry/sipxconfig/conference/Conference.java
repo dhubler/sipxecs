@@ -13,12 +13,9 @@ import static org.sipfoundry.commons.mongo.MongoConstants.CONF_AUTORECORD;
 import static org.sipfoundry.commons.mongo.MongoConstants.CONF_DESCRIPTION;
 import static org.sipfoundry.commons.mongo.MongoConstants.CONF_ENABLED;
 import static org.sipfoundry.commons.mongo.MongoConstants.CONF_EXT;
-import static org.sipfoundry.commons.mongo.MongoConstants.CONF_MEMBERS_ONLY;
-import static org.sipfoundry.commons.mongo.MongoConstants.CONF_MODERATED;
 import static org.sipfoundry.commons.mongo.MongoConstants.CONF_NAME;
 import static org.sipfoundry.commons.mongo.MongoConstants.CONF_OWNER;
 import static org.sipfoundry.commons.mongo.MongoConstants.CONF_PIN;
-import static org.sipfoundry.commons.mongo.MongoConstants.CONF_PUBLIC;
 import static org.sipfoundry.commons.mongo.MongoConstants.CONF_URI;
 
 import java.io.File;
@@ -28,13 +25,16 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.lang.StringUtils;
+import org.sipfoundry.commons.mongo.MongoConstants;
 import org.sipfoundry.sipxconfig.address.Address;
 import org.sipfoundry.sipxconfig.address.AddressManager;
+import org.sipfoundry.sipxconfig.branch.Branch;
 import org.sipfoundry.sipxconfig.cfgmgt.DeployConfigOnEdit;
 import org.sipfoundry.sipxconfig.common.Replicable;
 import org.sipfoundry.sipxconfig.common.SipUri;
@@ -77,9 +77,11 @@ public class Conference extends BeanWithSettings implements Replicable, DeployCo
     public static final String TERMINATE_ON_MODERATOR_EXIT = "fs-conf-conference/terminate-on-moderator-exit";
     public static final String QUICKSTART = "fs-conf-conference/quickstart";
     public static final String VIDEO = "fs-conf-conference/video";
+    public static final String PLAY_ENTRY_TONE = "fs-conf-conference/play-entry-tone";
+    public static final String PLAY_EXIT_TONE = "fs-conf-conference/play-exit-tone";
+    public static final String RECORD_AND_PLAY_NAME_ON_ENTRY = "fs-conf-conference/prompt-name-on-entry";
+    public static final String RECORD_AND_PLAY_NAME_ON_EXIT = "fs-conf-conference/prompt-name-on-exit";
     public static final String VIDEO_TOGGLE_FLOOR = "fs-conf-conference/video-toogle-floor";
-    public static final String MODERATED_ROOM = "chat-meeting/moderated";
-    public static final String PUBLIC_ROOM = "chat-meeting/public";
 
     private static final String ALIAS_RELATION = "conference";
     private boolean m_enabled;
@@ -98,6 +100,7 @@ public class Conference extends BeanWithSettings implements Replicable, DeployCo
     private String m_audioDirectory;
     private LocalizationContext m_localizationContext;
     private String m_promptsDir;
+    private Set<Branch> m_locations = new HashSet<Branch>();
 
     public void setLocalizationContext(LocalizationContext localizationContext) {
         m_localizationContext = localizationContext;
@@ -244,20 +247,36 @@ public class Conference extends BeanWithSettings implements Replicable, DeployCo
         return getSettingValue(MOH).equals(MOH_FILES_SOURCE);
     }
 
-    public boolean isModeratedRoom() {
-        return (Boolean) getSettingTypedValue(MODERATED_ROOM);
+    public boolean isPlayEntryToneEnabled() {
+        return (Boolean) getSettingTypedValue(PLAY_ENTRY_TONE);
     }
 
-    public void setModeratedRoom(Boolean moderatedRoom) {
-        setSettingTypedValue(MODERATED_ROOM, moderatedRoom);
+    public void setPlayEntryToneEnabled(Boolean playEntryToneEnabled) {
+        setSettingTypedValue(PLAY_ENTRY_TONE, playEntryToneEnabled);
     }
 
-    public boolean isPublicRoom() {
-        return (Boolean) getSettingTypedValue(PUBLIC_ROOM);
+    public boolean isPlayExitToneEnabled() {
+        return (Boolean) getSettingTypedValue(PLAY_EXIT_TONE);
     }
 
-    public void setPublicRoom(Boolean publicRoom) {
-        setSettingTypedValue(PUBLIC_ROOM, publicRoom);
+    public void setPlayExitToneEnabled(Boolean playExitToneEnabled) {
+        setSettingTypedValue(PLAY_EXIT_TONE, playExitToneEnabled);
+    }
+
+    public boolean isRecordAndPlayNameOnEntryEnabled() {
+        return (Boolean) getSettingTypedValue(RECORD_AND_PLAY_NAME_ON_ENTRY);
+    }
+
+    public void setRecordAndPlayNameOnEntryEnabled(Boolean recordAndPlayNameOnEntryEnabled) {
+        setSettingTypedValue(RECORD_AND_PLAY_NAME_ON_ENTRY, recordAndPlayNameOnEntryEnabled);
+    }
+
+    public boolean isRecordAndPlayNameOnExitEnabled() {
+        return (Boolean) getSettingTypedValue(RECORD_AND_PLAY_NAME_ON_EXIT);
+    }
+
+    public void setRecordAndPlayNameOnEXitEnabled(Boolean recordAndPlayNameOnExitEnabled) {
+        setSettingTypedValue(RECORD_AND_PLAY_NAME_ON_EXIT, recordAndPlayNameOnExitEnabled);
     }
 
     public String getUri() {
@@ -274,6 +293,23 @@ public class Conference extends BeanWithSettings implements Replicable, DeployCo
 
     public boolean hasOwner() {
         return m_owner != null;
+    }
+
+    public Set<Branch> getLocations() {
+        return m_locations;
+    }
+
+    public void setLocations(Set<Branch> locations) {
+        m_locations = locations;
+    }
+
+    public List<Branch> getLocationsList() {
+        return new ArrayList<Branch>(m_locations);
+    }
+
+    public void setLocationsList(List<Branch> locations) {
+        m_locations.clear();
+        m_locations.addAll(locations);
     }
 
     public Setting getConfigSettings() {
@@ -473,11 +509,13 @@ public class Conference extends BeanWithSettings implements Replicable, DeployCo
             props.put(CONF_OWNER, StringUtils.EMPTY);
         }
         props.put(CONF_PIN, getParticipantAccessCode());
-        props.put(CONF_MODERATED, getSettingValue(MODERATED_ROOM));
-        props.put(CONF_PUBLIC, getSettingValue(PUBLIC_ROOM));
-        props.put(CONF_MEMBERS_ONLY, getSettingValue("chat-meeting/members-only"));
         props.put(CONF_AUTORECORD, isAutorecorded());
         props.put(CONF_URI, getUri());
+        List<String> locations = new ArrayList<String>();
+        for (Branch branch : m_locations) {
+            locations.add(branch.getName());
+        }
+        props.put(MongoConstants.LOCATIONS, locations);
         return props;
     }
 

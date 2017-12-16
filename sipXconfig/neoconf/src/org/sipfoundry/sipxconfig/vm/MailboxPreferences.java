@@ -25,6 +25,7 @@ public class MailboxPreferences {
     public static final String BUSY_PROMPT = "voicemail/mailbox/user-busy-prompt";
     public static final String VOICEMAIL_TUI = "voicemail/mailbox/voicemail-tui";
     public static final String EXTERNAL_MWI = "voicemail/mailbox/external-mwi";
+    public static final String FORWARD_DELETE_VOICEMAIL = "voicemail/mailbox/forward-delete-voicemail";
 
     public static final String PRIMARY_EMAIL_NOTIFICATION = "voicemail/mailbox/primary-email-voicemail-notification";
     public static final String PRIMARY_EMAIL_FORMAT = "voicemail/mailbox/primary-email-format";
@@ -32,12 +33,6 @@ public class MailboxPreferences {
     public static final String ALT_EMAIL_NOTIFICATION = "voicemail/mailbox/alternate-email-voicemail-notification";
     public static final String ALT_EMAIL_FORMAT = "voicemail/mailbox/alternate-email-format";
     public static final String ALT_EMAIL_ATTACH_AUDIO = "voicemail/mailbox/alternate-email-attach-audio";
-
-    public static final String IMAP_ACCOUNT = "voicemail/imap/account";
-    public static final String IMAP_PASSWORD = "voicemail/imap/password";
-    public static final String IMAP_TLS = "voicemail/imap/tls";
-    public static final String IMAP_PORT = "voicemail/imap/port";
-    public static final String IMAP_HOST = "voicemail/imap/host";
 
     public enum ActiveGreeting {
         NONE("none"), STANDARD("standard"), OUT_OF_OFFICE("outofoffice"), EXTENDED_ABSENCE("extendedabsence");
@@ -76,7 +71,7 @@ public class MailboxPreferences {
     }
 
     public enum AttachType {
-        NO("0"), YES("1")/* , IMAP("2") */;
+        NO("0"), YES("1");
 
         private static final Set<String> VALUES = new HashSet<String>();
 
@@ -156,6 +151,7 @@ public class MailboxPreferences {
     private String m_busyPrompt;
     private VoicemailTuiType m_voicemailTui = VoicemailTuiType.STANDARD;
     private String m_externalMwi;
+    private boolean m_forwardDeleteVoicemail;
 
     private String m_emailAddress;
     private MailFormat m_emailFormat = MailFormat.FULL;
@@ -166,12 +162,6 @@ public class MailboxPreferences {
     private MailFormat m_alternateEmailFormat = MailFormat.FULL;
     private AttachType m_voicemailToAlternateEmailNotification = AttachType.NO;
     private boolean m_includeAudioAttachmentAlternateEmail;
-
-    private String m_imapHost;
-    private String m_imapPort;
-    private boolean m_imapTLS;
-    private String m_imapAccount;
-    private String m_imapPassword;
 
     public MailboxPreferences() {
         // empty
@@ -185,17 +175,13 @@ public class MailboxPreferences {
         m_busyPrompt = user.getSettingValue(BUSY_PROMPT);
         m_voicemailTui = VoicemailTuiType.fromValue(user.getSettingValue(VOICEMAIL_TUI));
         m_externalMwi = user.getSettingValue(EXTERNAL_MWI);
+        m_forwardDeleteVoicemail = (Boolean) user.getSettingTypedValue(FORWARD_DELETE_VOICEMAIL);
         m_attachVoicemailToEmail = AttachType.fromValue(user.getPrimaryEmailNotification());
         m_emailFormat = MailFormat.valueOf(user.getPrimaryEmailFormat());
         m_includeAudioAttachment = (Boolean) user.isPrimaryEmailAttachAudio();
         m_voicemailToAlternateEmailNotification = AttachType.fromValue(user.getAlternateEmailNotification());
         m_alternateEmailFormat = MailFormat.valueOf(user.getAlternateEmailFormat());
         m_includeAudioAttachmentAlternateEmail = (Boolean) user.isAlternateEmailAttachAudio();
-        m_imapHost = user.getSettingValue(IMAP_HOST);
-        m_imapPort = user.getSettingValue(IMAP_PORT);
-        m_imapTLS = (Boolean) user.getSettingTypedValue(IMAP_TLS);
-        m_imapPassword = user.getSettingValue(IMAP_PASSWORD);
-        m_imapAccount = user.getSettingValue(IMAP_ACCOUNT);
     }
 
     public void updateUser(User user) {
@@ -206,17 +192,13 @@ public class MailboxPreferences {
         user.setSettingValue(BUSY_PROMPT, m_busyPrompt);
         user.setSettingValue(VOICEMAIL_TUI, m_voicemailTui.getValue());
         user.setSettingValue(EXTERNAL_MWI, m_externalMwi);
+        user.setSettingTypedValue(FORWARD_DELETE_VOICEMAIL, m_forwardDeleteVoicemail);
         user.setPrimaryEmailNotification(m_attachVoicemailToEmail.getValue());
         user.setPrimaryEmailFormat(m_emailFormat.name());
         user.setPrimaryEmailAttachAudio(m_includeAudioAttachment);
         user.setAlternateEmailNotification(m_voicemailToAlternateEmailNotification.getValue());
         user.setAlternateEmailFormat(m_alternateEmailFormat.name());
         user.setAlternateEmailAttachAudio(m_includeAudioAttachmentAlternateEmail);
-        user.setSettingValue(IMAP_HOST, m_imapHost);
-        user.setSettingValue(IMAP_PORT, m_imapPort);
-        user.setSettingTypedValue(IMAP_TLS, m_imapTLS);
-        user.setSettingValue(IMAP_PASSWORD, m_imapPassword);
-        user.setSettingValue(IMAP_ACCOUNT, m_imapAccount);
     }
 
     public ActiveGreeting getActiveGreeting() {
@@ -336,44 +318,12 @@ public class MailboxPreferences {
         m_includeAudioAttachmentAlternateEmail = audioAttachmentAlternateEmail;
     }
 
-    public String getImapHost() {
-        return m_imapHost;
+    public boolean isForwardDeleteVoicemail() {
+        return m_forwardDeleteVoicemail;
     }
 
-    public void setImapHost(String imapHost) {
-        m_imapHost = imapHost;
-    }
-
-    public String getImapPort() {
-        return m_imapPort;
-    }
-
-    public void setImapPort(String imapPort) {
-        m_imapPort = imapPort;
-    }
-
-    public boolean getImapTLS() {
-        return m_imapTLS;
-    }
-
-    public void setImapTLS(boolean imapTls) {
-        m_imapTLS = imapTls;
-    }
-
-    public String getImapPassword() {
-        return m_imapPassword;
-    }
-
-    public void setImapPassword(String emailPassword) {
-        m_imapPassword = emailPassword;
-    }
-
-    public String getImapAccount() {
-        return m_imapAccount;
-    }
-
-    public void setImapAccount(String imapAccount) {
-        m_imapAccount = imapAccount;
+    public void setForwardDeleteVoicemail(boolean forwardDeleteVoicemail) {
+        m_forwardDeleteVoicemail = forwardDeleteVoicemail;
     }
 
     public boolean isImapServerConfigured() {

@@ -13,12 +13,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.sipfoundry.commons.mongo.MongoConstants;
 import org.sipfoundry.commons.userdb.ValidUsers;
+import org.sipfoundry.sipxconfig.admin.AdminContext;
 import org.sipfoundry.sipxconfig.alias.AliasManager;
 import org.sipfoundry.sipxconfig.cfgmgt.ConfigManager;
 import org.sipfoundry.sipxconfig.common.CoreContext;
@@ -28,7 +30,6 @@ import org.sipfoundry.sipxconfig.common.SpecialUser;
 import org.sipfoundry.sipxconfig.common.SpecialUser.SpecialUserType;
 import org.sipfoundry.sipxconfig.common.User;
 import org.sipfoundry.sipxconfig.common.UserException;
-import org.sipfoundry.sipxconfig.common.UserValidationUtils;
 import org.sipfoundry.sipxconfig.common.event.DaoEventListenerAdvanced;
 import org.sipfoundry.sipxconfig.commserver.Location;
 import org.sipfoundry.sipxconfig.commserver.SipxReplicationContext;
@@ -38,6 +39,10 @@ import org.sipfoundry.sipxconfig.feature.LocationFeature;
 import org.sipfoundry.sipxconfig.rls.Rls;
 import org.sipfoundry.sipxconfig.rls.RlsRule;
 import org.sipfoundry.sipxconfig.setting.Group;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.BeanFactoryAware;
+import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.annotation.Required;
 import org.springframework.data.mongodb.core.MongoTemplate;
 
@@ -47,7 +52,7 @@ import com.mongodb.DBCollection;
 import com.mongodb.DBObject;
 
 public class SpeedDialManagerImpl extends SipxHibernateDaoSupport<SpeedDial> implements SpeedDialManager,
-        DaoEventListenerAdvanced {
+        DaoEventListenerAdvanced, BeanFactoryAware {
     private static final Log LOG = LogFactory.getLog(SpeedDialManagerImpl.class);
     private static final int MAX_BUTTONS = 136;
     private CoreContext m_coreContext;
@@ -59,6 +64,8 @@ public class SpeedDialManagerImpl extends SipxHibernateDaoSupport<SpeedDial> imp
 
     private AliasManager m_aliasManager;
     private String m_featureId;
+    private AdminContext m_adminContext;
+    private ListableBeanFactory m_beanFactory;
 
     @Override
     public SpeedDial getSpeedDialForUserId(Integer userId, boolean create) {
@@ -98,7 +105,18 @@ public class SpeedDialManagerImpl extends SipxHibernateDaoSupport<SpeedDial> imp
              */
             for (int i = speeddialGroups.size() - 1; i >= 0; i--) {
                 if (0 < speeddialGroups.get(i).getButtons().size()) {
-                    return speeddialGroups.get(i).getSpeedDial(user);
+                    SpeedDial speedDial = speeddialGroups.get(i).getSpeedDial(user);
+                    if (!isAllowSubscriptionToSelf()) {
+                        List<Button> buttons = speedDial.getButtons();
+                        List<Button> selfButtons = new ArrayList();
+                        for (Button button : buttons) {
+                            if (user.getUserName().equals(button.getNumber())) {
+                                selfButtons.add(button);
+                            }
+                        }
+                        buttons.removeAll(selfButtons);
+                    }
+                    return speedDial;
                 }
             }
         }
@@ -148,7 +166,7 @@ public class SpeedDialManagerImpl extends SipxHibernateDaoSupport<SpeedDial> imp
 
     @Override
     public void saveSpeedDial(SpeedDial speedDial) {
-        verifyBlfs(speedDial.getButtons());
+        verifyBlfs(speedDial);
         if (speedDial.isNew()) {
             getHibernateTemplate().save(speedDial);
         } else {
@@ -159,21 +177,45 @@ public class SpeedDialManagerImpl extends SipxHibernateDaoSupport<SpeedDial> imp
         getDaoEventPublisher().publishSave(user);
     }
 
-    private void verifyBlfs(List<Button> buttons) {
-        int count = 0;
-        for (Button button : buttons) {
-            count++;
+    private void verifyBlfs(SpeedDialButtons speedDial) {
+        for (Button button : speedDial.getButtons()) {
             if (button.isBlf()) {
                 String number = button.getNumber();
-                if (!UserValidationUtils.isValidEmail(number) && !m_aliasManager.isAliasInUse(number)) {
+                if (!SipUri.matches(number) && (verifySubscriptionsToSelf(speedDial, number)
+                        || !validateSubscriptions(speedDial, number)
+                        || !m_aliasManager.isAliasInUse(number))) {
                     button.setBlf(false);
                     throw new UserException("&error.notValidBlf", number);
                 }
             }
         }
-        if (count > MAX_BUTTONS) {
-            throw new UserException("&error.speedDialExceedsMaxNumber", MAX_BUTTONS);
+    }
+
+    /**
+     * Scans for all SubscribeToPresenceValidator implementations
+     * and validates the speed dial subscriptions to presence
+     */
+    private boolean validateSubscriptions(SpeedDialButtons speedDial, String number) {
+        Map<String, SubscribeToPresenceValidator> validators = m_beanFactory
+                .getBeansOfType(SubscribeToPresenceValidator.class);
+        for (SubscribeToPresenceValidator validator : validators.values()) {
+            if (!validator.validateSubscriptions(speedDial, number)) {
+                return false;
+            }
         }
+        return true;
+    }
+
+    /**
+     * Do not allow presence subscriptions to self.
+     */
+    private boolean verifySubscriptionsToSelf(SpeedDialButtons speedDial, String number) {
+        boolean hasErrors = false;
+        if (speedDial instanceof SpeedDial && !isAllowSubscriptionToSelf()) {
+            User user = ((SpeedDial) speedDial).getUser();
+            hasErrors = number.equals(user.getUserName());
+        }
+        return hasErrors;
     }
 
     /**
@@ -189,7 +231,7 @@ public class SpeedDialManagerImpl extends SipxHibernateDaoSupport<SpeedDial> imp
 
     @Override
     public void saveSpeedDialGroup(SpeedDialGroup speedDialGroup) {
-        verifyBlfs(speedDialGroup.getButtons());
+        verifyBlfs(speedDialGroup);
         if (speedDialGroup.isNew()) {
             getHibernateTemplate().save(speedDialGroup);
         } else {
@@ -270,6 +312,16 @@ public class SpeedDialManagerImpl extends SipxHibernateDaoSupport<SpeedDial> imp
         m_featureId = feature;
     }
 
+    @Required
+    public void setAdminContext(AdminContext adminContext) {
+        m_adminContext = adminContext;
+    }
+
+    @Override
+    public boolean isAllowSubscriptionToSelf() {
+        return m_adminContext.isAllowSubscriptionsToSelf();
+    }
+
     @Override
     public void onDelete(Object entity) {
         // TODO: on group deletion publishDelete is called after the delete (unlike for users)
@@ -334,5 +386,10 @@ public class SpeedDialManagerImpl extends SipxHibernateDaoSupport<SpeedDial> imp
 
     public void setImdbTemplate(MongoTemplate imdbTemplate) {
         m_imdbTemplate = imdbTemplate;
+    }
+
+    @Override
+    public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
+        m_beanFactory = (ListableBeanFactory) beanFactory;
     }
 }

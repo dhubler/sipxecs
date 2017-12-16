@@ -269,16 +269,26 @@ EnforceAuthRules::authorizeAndModify(const UtlString& id,    /**< The authentica
             }
             else
             {
-               result = DENY;
-               Os::Logger::instance().log(FAC_AUTH, PRI_WARNING,
-                             "EnforceAuthRules[%s]::authorizeAndModify "
-                             " call '%s' requires '%s'",
-                             mInstanceName.data(), callId.data(), unmatchedPermissions.data()
-                             );
-               // since the user is at least a valid user, help them debug the configuration
-               // by telling them what permissions would allow this request.
-               reason.append("Requires ");
-               reason.append(unmatchedPermissions);
+              result = DENY;
+
+              if (!unmatchedPermissions.isNull())
+              {
+                Os::Logger::instance().log(FAC_AUTH, PRI_WARNING,
+                              "EnforceAuthRules[%s]::authorizeAndModify "
+                              " call '%s' requires '%s'",
+                              mInstanceName.data(), callId.data(), unmatchedPermissions.data()
+                              );
+                // since the user is at least a valid user, help them debug the configuration
+                // by telling them what permissions would allow this request.
+                reason.append("Requires ");
+                reason.append(unmatchedPermissions);
+              }
+              else
+              {
+                Os::Logger::instance().log(FAC_AUTH, PRI_DEBUG, "EnforceAuthRules[%s]::authorizeAndModify "
+                             " id '%s' is not authorized, unmatchedPermissions is empty",
+                             mInstanceName.data(), id.data());
+              }
             }
          }
       }
@@ -327,6 +337,7 @@ bool EnforceAuthRules::isAuthorized(const UtlString& id,
     UtlSListIterator requiredRecs(requiredSet);
     UtlHashMap* requiredRecord;
     UtlString permissionKey("permission");
+       
     while((requiredRecord = dynamic_cast<UtlHashMap*>(requiredRecs())))
     {
       UtlString* reqPermission = dynamic_cast<UtlString*>(requiredRecord->findValue(&permissionKey));

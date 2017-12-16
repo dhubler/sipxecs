@@ -35,7 +35,7 @@
 
   <div class="voicemail row" data-resize>
     <div class="voicemail-wrapper row animated fade"
-      data-ng-repeat="audio in (filtered = (voicemail.messages)) track by $index">
+      data-ng-repeat="audio in (filtered = (voicemail.messages)) | orderObjectBy:'received':true track by $index">
         <div class="vmsg col-md-12 clearfix">
 
           <div class="col-sm-3 vmsg-name">
@@ -55,7 +55,7 @@
               </span>
             </span>
             <span class="name">
-              {{ audio.author }}
+              {{ audio.callerIdNumber === "null" ? audio.author : audio.callerIdNumber + '(' + audio.callerIdName + ')' }}
               <span class="label label-primary"
                 data-ng-if="audio.heard === false">New</span>
             </span>-
@@ -78,12 +78,12 @@
               data-ng-if="audio.href !== undefined && audio.href!==''">
               <audio controls
                 data-ng-attr-id="{{ audio.id }}"
-                data-ng-src="{{ audio.href }}"
+                data-ng-src="{{ audio.format=='mp3' ? audio.href + '.mp3' : audio.href + '.wav' }}"
                 data-ng-if="voicemail.mp3Ie(audio.format)"
                 type="{{audio.format=='mp3' ? 'audio/mp3' : 'audio/wav'}}">
               </audio>
               <small data-ng-if="!(voicemail.mp3Ie(audio.format))">
-                WAV voicemails cannot be played in Internet Explorer. In order to listen to this voicemail please download it.
+                WAV voicemails cannot be played. In order to listen to this voicemail please download it.
               </small>
             </div>
 
@@ -91,8 +91,8 @@
               <div class="btn-group btn-group-xs">
                 <a target="_self"
                   data-ng-if="audio.href"
-                  data-ng-href="{{ audio.href }}"
-                  download="voicemail.mp3"
+                  data-ng-href="{{ audio.format=='mp3' ? audio.href + '.mp3' : audio.href + '.wav' }}"
+                  download="{{ audio.format=='mp3' ? audio.subject + '.mp3' : audio.subject + '.wav' }}"
                   class="btn btn-default inline-default"
                   title="Download">
                   <i class="icon-downloads"></i>
@@ -111,7 +111,11 @@
               </select>
             </div>
             <div class="pull-right">
-              <span class="received">{{ audio.received | date: 'short' }}</span>
+              <span class="received">{{ audio.received | date:'short' }}</span>
+            </div>
+            <div class="pull-left fade left-click-warning"
+              data-ng-if="voicemail.leftClickWarning[audio.id]">
+              <small>In order to save please right-click the Download button and then "Save as..." from the context menu.</small>
             </div>
           </div>
 

@@ -18,7 +18,8 @@
           <div class="settings-item row unselectable"
             data-ng-repeat="option in settings"
             data-ng-click="selectOption()"
-            data-ng-class="{'active': option.isSelected}">
+            data-ng-class="{'active': option.isSelected}"
+            data-ng-if="(option.enable === 'false') ? false : true">
             <span class="col-xs-2"><i class="icon-{{option.icon}}"></i></span>
             <span class="col-xs-8 settings-item-name">{{option.name}}</span>
             <span class="col-xs-2 arrow"><i class="icon-arrow_collapse_right"></i></span>
@@ -105,6 +106,15 @@
                     </span>
                   </div>
                 </div>
+                <div class="form-group clearfix">
+                  <label class="col-sm-4 control-label">Forward and Delete voicemail</label>
+                  <div class="col-sm-8">
+                    <input type="checkbox" class="form-control" data-ng-model="userSettings.personalAttendant.main.forwardDeleteVM">
+                    <span class="help-block">
+                      If checked, the voicemails that are succesfully emailed will be deleted.
+                    </span>
+                  </div>
+                </div>
                 <div class="table-responsive">
                   <table class="table">
                     <thead>
@@ -178,8 +188,8 @@
                   data-ng-click="userSettings.personalAttendant.cancel(); formPa.$setPristine();">
                   Cancel
                 </button>
-                <button type="button" class="btn btn-info"
-                  data-ng-click="userSettings.personalAttendant.save()"
+                <button type="button" class="btn btn-success"
+                  data-ng-click="userSettings.personalAttendant.save(formPa)"
                   data-ng-disabled="!formPa.$dirty || formPa.$invalid">
                   Save
                 </button>
@@ -272,7 +282,7 @@
                             <td>
                               <input type="text" class="form-control"
                                 data-ng-model="ring.number"
-                                data-ng-pattern="/^\d+$/"
+                                data-ng-pattern="/(^\d+|^([+][0-9]+))$/"
                                 data-ng-required="true">
                             </td>
                             <td>
@@ -324,8 +334,8 @@
                       data-ng-click="userSettings.fwd.setup.cancel(); formSetup.$setPristine();">
                       Cancel
                     </button>
-                    <button type="button" class="btn btn-info"
-                      data-ng-click="userSettings.fwd.setup.save()"
+                    <button type="button" class="btn btn-success"
+                      data-ng-click="userSettings.fwd.setup.save(formSetup)"
                       data-ng-disabled="!formSetup.$dirty || formSetup.$invalid">
                       Save
                     </button>
@@ -426,15 +436,15 @@
                           </tbody>
                         </table>
                       </div>
-                    </form>
+
                       <div class="fwd-sched-btns">
                         <button class="btn btn-default"
                           data-ng-click="userSettings.fwd.sched.cancel(); formSched.$setPristine();"
                           data-ng-disabled="!formSched.$dirty">
                           Cancel
                         </button>
-                        <button type="button" class="btn btn-info"
-                          data-ng-click="userSettings.fwd.sched.save()"
+                        <button type="button" class="btn btn-success"
+                          data-ng-click="userSettings.fwd.sched.save(formSched)"
                           data-ng-disabled="!formSched.$dirty || formSched.$invalid || userSettings.fwd.sched.selected.periods.length === 0">
                           Save
                         </button>
@@ -445,8 +455,9 @@
                         <span data-ng-if="userSettings.success" class="label label-success animated fadeOut">Success</span>
                         <span data-ng-if="userSettings.warning" class="label label-warning animated fadeOut">Warning</span>
                       </div>
-                    </div>
+                    </form>
                   </div>
+
 
                   <div class="animated fade"
                     data-ng-if="userSettings.fwd.sched.showNew">
@@ -460,6 +471,7 @@
                       </span>
                     </div>
 
+                    <form name="formSchedNew">
                     <div class="table-responsive">
                       <table class="table">
                         <thead>
@@ -516,21 +528,24 @@
                         </tbody>
                       </table>
                     </div>
+                      <button type="button" class="btn btn-default "
+                        data-ng-disabled="!formSchedNew.$dirty || formSchedNew.$invalid|| userSettings.fwd.sched.selected.periods.length === 0"
+                        data-ng-click="userSettings.fwd.sched.addNew();"
+                        >
+                        Add and save
+                      </button>
+                    </form>
                   </div>
 
                   <p class="animated">
-                    <button type="button" class="btn btn-default"
+                    <button type="button" class="btn btn-default "
+                      data-ng-disabled="userSettings.fwd.sched.showNew || userSettings.fwd.sched.selected.periods.length === 0"
                       data-ng-click="userSettings.fwd.sched.addNew();"
-                      data-ng-disabled="userSettings.fwd.sched.selected.periods.length === 0">
-                      <span data-ng-if="userSettings.fwd.sched.showNew">
-                        Add and save
-                      </span>
-                      <span data-ng-if="!userSettings.fwd.sched.showNew">
-                        Add new schedule
-                      </span>
+                      >
+                      Add new schedule
                     </button>
                   </p>
-
+                </div>
 
 
               </div>
@@ -562,13 +577,13 @@
               <div class="form-group clearfix">
                 <label class="col-sm-5 control-label">Only use Group Speed Dials</label>
                 <div class="col-sm-7">
-                  <input type="checkbox" class="form-control" data-ng-model="userSettings.speed.data.groupSpeedDial">
+                  <input type="checkbox" class="form-control" data-ng-model="userSettings.speed.data.groupSpeedDial" data-ng-change="formSpeed.$setDirty();">
                   <span class="help-block">
                     Enabling this option will delete all your existing Speed Dials and replace them with the Group Speed Dials
                   </span>
                 </div>
               </div>
-              <div data-ng-show="!userSettings.speed.data.groupSpeedDial" class="animated fade">
+              <div class="animated fade">
                 <form name="formSpeed" novalidate>
                   <div class="table-responsive">
                     <table class="table">
@@ -586,7 +601,7 @@
                           <td>
                             <input type="text" class="form-control" placeholder="Number"
                               data-ng-model="userSettings.speed.data.buttons[$index].number"
-                              data-ng-pattern="/^\d+$/"
+                              data-ng-pattern="userSettings.speed.data.buttons[$index].pattern"
                               data-ng-required="true">
                           </td>
                           <td>
@@ -628,6 +643,12 @@
                         </tr>
                       </tbody>
                     </table>
+                    <div class="settings-details-wrapper animated fade" data-ng-if="userSettings.errors.speedDials">
+                      <div class="alert alert-warning">
+                      <p><strong>Invalid Speed Dial value entered.</strong></p>
+                        You can not subscribe to presence with this speed dial value.
+                      </div>
+                    </div>
                   </div>
                 </form>
               </div>
@@ -637,11 +658,11 @@
                   data-ng-click="userSettings.speed.cancel(); formSpeed.$setPristine();">
                   Cancel
                 </button>
-                <button class="btn btn-info" data-ng-click="userSettings.speed.save()"
+                <button class="btn btn-success" data-ng-click="userSettings.speed.save(formSpeed)"
                   data-ng-disabled="!formSpeed.$dirty || formSpeed.$invalid">
                   Save
                 </button>
-                <button class="btn btn-info" data-ng-click="userSettings.speed.save(true)"
+                <button class="btn btn-success" data-ng-click="userSettings.speed.save(formSpeed, true)"
                   data-ng-disabled="!formSpeed.$dirty || formSpeed.$invalid">
                   Save and update phone(s)
                 </button>
@@ -669,14 +690,16 @@
               </div>
             </div>
 
+            <form name="formUserSettings" novalidate>
             <div>
 
               <div class="settings-details-wrapper">
                 <div class="form-group clearfix">
                   <label for="inputPass" class="col-sm-3 control-label">User Password</label>
                   <div class="col-sm-9">
-                    <input type="password" class="form-control" placeholder="Password"
+                    <input type="password" class="form-control" placeholder="********"
                       data-ng-pattern="/^[a-zA-Z0-9-!$%^&*()_+|~=`{}\[\]:;'<>?,.\/@#]{8,}$/"
+                      data-ng-disabled="!permission.enableSettingUserPaswd"
                       data-ng-model="userSettings.user.pass">
                     <span class="help-block">
                       Used to log into the User Portal and XMPP. Minimum length is 8.
@@ -707,7 +730,7 @@
                 <div class="form-group clearfix">
                   <label class="col-sm-3 control-label">Voicemail PIN</label>
                   <div class="col-sm-9">
-                    <input type="password" class="form-control" placeholder="Password" data-ng-pattern="/^[a-zA-Z0-9]{4,}$/" data-ng-model="userSettings.user.vm.pass">
+                    <input type="password" class="form-control" placeholder="****" data-ng-pattern="/^[a-zA-Z0-9]{4,}$/" data-ng-disabled="!permission.enableSettingUserVmPin" data-ng-model="userSettings.user.vm.pass">
                     <span class="help-block">
                       Used to log into voicemail. Numeric PINs are recommended, since only numbers can be dialed. Minimum length is 4.
                     </span>
@@ -718,6 +741,7 @@
                   <div class="col-sm-9">
                     <select class="form-control"
                       data-ng-model="userSettings.user.vm.selected"
+                      data-ng-disabled="!permission.enableSettingUserAnnouncement"
                       data-ng-options="c.name for c in userSettings.user.vm.select">
                     </select>
                     <span class="help-block">
@@ -728,13 +752,13 @@
                 <div class="form-group clearfix">
                   <label class="col-sm-3 control-label">Email</label>
                   <div class="col-sm-9">
-                    <input type="email" class="form-control" placeholder="Email" data-ng-model="userSettings.user.vm.main.email">
+                    <input type="email" class="form-control" placeholder="Email" data-ng-disabled="!permission.enableSettingUserEmail" data-ng-model="userSettings.user.vm.main.email">
                   </div>
                 </div>
                 <div class="form-group clearfix">
                   <label class="col-sm-3 control-label">Attach audio</label>
                   <div class="col-sm-9">
-                    <input type="checkbox" class="form-control" data-ng-model="userSettings.user.vm.main.emailIncludeAudioAttachment">
+                    <input type="checkbox" class="form-control" data-ng-disabled="!permission.enableSettingUserAttachAudio" data-ng-model="userSettings.user.vm.main.emailIncludeAudioAttachment">
                     <span class="help-block">
                       If checked, the voicemail message will be attached to the notification email. Otherwise, the email will contain a link to retrieve voicemail message.
                     </span>
@@ -743,30 +767,33 @@
                 <div class="form-group clearfix">
                   <label class="col-sm-3 control-label">Alternate email</label>
                   <div class="col-sm-9">
-                    <input type="email" class="form-control" placeholder="Email" data-ng-model="userSettings.user.vm.main.altEmail">
+                    <input type="email" class="form-control" placeholder="Email" data-ng-disabled="!permission.enableSettingUserAltEmail" data-ng-model="userSettings.user.vm.main.altEmail">
                   </div>
                 </div>
                 <div class="form-group clearfix">
                   <label class="col-sm-3 control-label">Attach audio</label>
                   <div class="col-sm-9">
-                    <input type="checkbox" class="form-control" data-ng-model="userSettings.user.vm.main.altEmailIncludeAudioAttachment">
+                    <input type="checkbox" class="form-control" data-ng-disabled="!permission.enableSettingUserAltAttachAudio" data-ng-model="userSettings.user.vm.main.altEmailIncludeAudioAttachment">
                   </div>
                 </div>
               </div>
 
-              <p class="settings-subtitle">Conference Bridge</p>
-              <div class="settings-details-wrapper animated fade" data-ng-if="userSettings.errors.confBridge">
+
+              <!--<div class="settings-details-wrapper animated fade" data-ng-if="userSettings.errors.confBridge">
                 <div class="alert alert-warning">
                   <p><strong>Feature not available</strong></p>
                   Please contact your administrator.
                 </div>
-              </div>
+              </div>-->
+
               <div class="settings-details-wrapper" data-ng-if="!userSettings.errors.confBridge">
+                <p class="settings-subtitle">Conference Bridge</p>
                 <div class="form-group clearfix">
                   <label class="col-sm-3 control-label">Room</label>
                   <div class="col-sm-9">
                     <select class="form-control"
                       data-ng-model="userSettings.user.conf.selected"
+                      data-ng-disabled="!permission.enableSettingUserConfBridgeRoom"
                       data-ng-options="c.name for c in userSettings.user.conf.select"
                       data-ng-change="userSettings.user.conf.changeConf()">
                     </select>
@@ -775,19 +802,19 @@
                 <div class="form-group clearfix">
                   <label class="col-sm-3 control-label">Enabled</label>
                   <div class="col-sm-9">
-                    <input type="checkbox" class="form-control" data-ng-model="userSettings.user.conf.main.enabled">
+                    <input type="checkbox" class="form-control" data-ng-disabled="!permission.enableSettingUserConfBridgeEnabled" data-ng-model="userSettings.user.conf.main.enabled">
                   </div>
                 </div>
                 <div class="form-group clearfix">
                   <label class="col-sm-3 control-label">Name</label>
                   <div class="col-sm-9">
-                    <input type="text" placeholder="Name" class="form-control" data-ng-model="userSettings.user.conf.main.name" required>
+                    <input type="text" placeholder="Name" class="form-control" data-ng-disabled="!permission.enableSettingUserConfBridgeName" data-ng-model="userSettings.user.conf.main.name" required>
                   </div>
                 </div>
                 <div class="form-group clearfix">
                   <label class="col-sm-3 control-label">Moderator PIN</label>
                   <div class="col-sm-9">
-                    <input type="text" placeholder="PIN" class="form-control" data-ng-model="userSettings.user.conf.main.moderatorCode" data-ng-pattern="/^\d+$/">
+                    <input type="text" placeholder="PIN" class="form-control" data-ng-disabled="!permission.enableSettingUserConfBridgeModeratorPin" data-ng-model="userSettings.user.conf.main.moderatorCode" data-ng-pattern="/^\d+$/">
                     <span class="help-block">
                       Moderator access code for audio conference. Can be empty. If set, a participant PIN must also be set. Users logged in using this pin are automatically recognised as moderators.
                     </span>
@@ -796,7 +823,7 @@
                 <div class="form-group clearfix">
                   <label class="col-sm-3 control-label">Participant PIN</label>
                   <div class="col-sm-9">
-                    <input type="text" placeholder="PIN" class="form-control" data-ng-model="userSettings.user.conf.main.accessCode" data-ng-pattern="/^\d+$/">
+                    <input type="text" placeholder="PIN" class="form-control" data-ng-disabled="!permission.enableSettingUserConfBridgePartPin" data-ng-model="userSettings.user.conf.main.accessCode" data-ng-pattern="/^\d+$/">
                     <span class="help-block">
                       Participant access code for audio conference. Can be empty.
                     </span>
@@ -805,7 +832,7 @@
                 <div class="form-group clearfix">
                   <label class="col-sm-3 control-label">Max. members</label>
                   <div class="col-sm-9">
-                    <input type="number" class="form-control" data-ng-model="userSettings.user.conf.main.maxMembers" data-ng-pattern="/^\d+$/">
+                    <input type="number" class="form-control" data-ng-disabled="!permission.enableSettingUserConfBridgeMaxMembers" data-ng-model="userSettings.user.conf.main.maxMembers" data-ng-pattern="/^\d+$/">
                     <span class="help-block">
                       The maximum number of call legs to be allowed by this bridge. 0 means unlimited.
                     </span>
@@ -814,7 +841,7 @@
                 <div class="form-group clearfix">
                   <label class="col-sm-3 control-label">Quickstart</label>
                   <div class="col-sm-9">
-                    <input type="checkbox" class="form-control" data-ng-model="userSettings.user.conf.main.quickstart">
+                    <input type="checkbox" class="form-control" data-ng-disabled="!permission.enableSettingUserConfBridgeQuickStart" data-ng-model="userSettings.user.conf.main.quickstart">
                     <span class="help-block">
                       A non-quickstart conference begins when the chair person arrives. Enable this if you want not to wait for a moderator. Only a quickstart conference can be setup with no PIN.
                     </span>
@@ -823,21 +850,143 @@
                 <div class="form-group clearfix">
                   <label class="col-sm-3 control-label">Auto-record</label>
                   <div class="col-sm-9">
-                    <input type="checkbox" class="form-control" data-ng-model="userSettings.user.conf.main.autorecorded">
+                    <input type="checkbox" class="form-control" data-ng-disabled="!permission.enableSettingUserConfBridgeAutoRecord" data-ng-model="userSettings.user.conf.main.autorecorded">
                     <span class="help-block">
                       If checked then conference calls will be recorded to the conference owner's mailbox
                     </span>
                   </div>
                 </div>
+                <div class="form-group clearfix">
+                  <label class="col-sm-3 control-label">Play Entry Tone</label>
+                  <div class="col-sm-9">
+                    <input type="checkbox" class="form-control" data-ng-disabled="!permission.enableSettingUserConfBridgeEntryTone" data-ng-model="userSettings.user.conf.main.playEntryToneEnabled">
+                    <span class="help-block">
+                      When enabled, entry tone will be played each time a participant joins this conference.
+                    </span>
+                  </div>
+                </div>
+                <div class="form-group clearfix">
+                  <label class="col-sm-3 control-label">Play Exit Tone</label>
+                  <div class="col-sm-9">
+                    <input type="checkbox" class="form-control" data-ng-disabled="!permission.enableSettingUserConfBridgeExitTone" data-ng-model="userSettings.user.conf.main.playExitToneEnabled">
+                    <span class="help-block">
+                      When enabled, exit tone will be played each time a participant leaves this conference.
+                    </span>
+                  </div>
+                </div>
+                <div class="form-group clearfix">
+                  <label class="col-sm-3 control-label">Play User Name on Entry</label>
+                  <div class="col-sm-9">
+                    <input type="checkbox" class="form-control" data-ng-disabled="!permission.enableSettingUserConfBridgeEntryVoice" data-ng-model="userSettings.user.conf.main.recordAndPlayNameOnEntryEnabled">
+                    <span class="help-block">
+                      When enabled, user joining this conference will be prompted to speak their name. The name is played and heard by all the participants upon user joining the meeting.
+                    </span>
+                  </div>
+                </div>
+                <div class="form-group clearfix">
+                  <label class="col-sm-3 control-label">Play User Name on Exit</label>
+                  <div class="col-sm-9">
+                    <input type="checkbox" class="form-control" data-ng-disabled="!permission.enableSettingUserConfBridgeExitVoice" data-ng-model="userSettings.user.conf.main.recordAndPlayNameOnExitEnabled">
+                    <span class="help-block">
+                      	When enabled, recorded name of user leaving this meeting is played and heard by all participants.
+                    </span>
+                  </div>
+                </div>
               </div>
+
+              <p class="settings-subtitle">Music on hold</p>
+              <div class="settings-details-wrapper" >
+                <div class="form-group clearfix">
+                  <label class="col-sm-3 control-label">Audio source</label>
+                  <div class="col-sm-9">
+                    <select class="form-control"
+                      data-ng-disabled="!permission.enableSettingUserMoHAudioSource"
+                      data-ng-model="userSettings.user.moh.selected"
+                      data-ng-options="c.name for c in userSettings.user.moh.select">
+                    </select>
+                    <span class="help-block">
+                      Select the Music on Hold source<br>
+                      &nbsp;&nbsp;Personal Music Directory - Personal MoH files listed bellow<br>
+                      &nbsp;&nbsp;Group Music Directory - Music from the User Group<br>
+                      &nbsp;&nbsp;System Music Directory - MoH defined for the System<br>
+                      &nbsp;&nbsp;Use System Configuration - Choose whatever the default is for the system<br>
+                      &nbsp;&nbsp;None - No MoH
+                    </span>
+
+                  </div>
+                </div>
+                <div class="form-group clearfix">
+                  <label class="col-sm-3 control-label">Personal MoH Files</label>
+                  <div class="col-sm-9">
+                    <select class="form-control"
+                      data-ng-disabled="!permission.enableSettingUserMoHPersonal"
+                      data-ng-model="userSettings.user.moh.selectedMoh"
+                      data-ng-options="c.name for c in userSettings.user.moh.selectMoh">
+                    </select>
+                    <span class="help-block">
+                      Select the Music on Hold file
+                    </span>
+                    <div class="settings-details-wrapper" data-ng-if="!(userSettings.user.moh.selectedMoh.val == 'NONE')">
+                      <button class="btn btn-default"
+                        data-ng-click="userSettings.user.moh.listenMoh()">
+                        Listen
+                      </button>
+                      <button class="btn btn-default"
+                        data-ng-click="userSettings.user.moh.deleteMoh()">
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-group clearfix">
+                  <label class="col-sm-3 control-label">Audio file</label>
+                  <div class="col-sm-9">
+                    <div ng-controller="UploadMoHFile">
+                      <input type="file" data-ng-disabled="!permission.enableSettingUserMoHFiles" nv-file-select uploader="uploader">
+
+                    </div>
+                    <span class="help-block">
+                      Choose the file from your computer to upload and add it to the Personal MoH files
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <p class="settings-subtitle">MyBuddy</p>
+              <div class="settings-details-wrapper animated fade" data-ng-if="userSettings.errors.myBuddy">
+                <div class="alert alert-warning">
+                  <p><strong>Feature not available</strong></p>
+                  Please contact your administrator.
+                </div>
+              </div>
+              <div class="settings-details-wrapper" data-ng-if="!userSettings.errors.myBuddy">
+                <div class="form-group clearfix animated fade">
+                  <label class="col-sm-4 control-label">
+                    <p class="muted">Triggered on:</p>
+                  </label>
+                </div>
+                <div class="form-group clearfix animated fade"
+                  data-ng-repeat="(key, val) in userSettings.user.buddy track by $index">
+                  <label class="col-sm-3 control-label">{{ key | translate }}</label>
+                  <div class="col-sm-9">
+                    <input type="checkbox" class="form-control" data-ng-disabled="!permission.buddy[$index]" data-ng-model="userSettings.user.buddy[key]">
+                  </div>
+                </div>
+              </div>
+
+
+            </div>
+            </form>
 
               <div class="settings-details-wrapper">
                 <button class="btn btn-default"
-                 data-ng-click="userSettings.user.cancel()">
+                 data-ng-disabled="!formUserSettings.$dirty"
+                 data-ng-click="userSettings.user.cancel(); formUserSettings.$setPristine();">
                   Cancel
                 </button>
-                <button class="btn btn-info"
-                  data-ng-click="userSettings.user.save()">
+                <button class="btn btn-success"
+                  data-ng-disabled="!formUserSettings.$dirty || formUserSettings.$invalid"
+                  data-ng-click="userSettings.user.save(formUserSettings)">
                   Save
                 </button>
                 <div class="spinner-wrapper inline animated fade"
@@ -848,7 +997,6 @@
             </div>
           </div>
         </div>
-      </div>
 
     </div><!--/#settings-list-->
 

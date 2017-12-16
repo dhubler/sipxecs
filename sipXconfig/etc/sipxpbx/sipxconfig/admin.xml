@@ -62,6 +62,10 @@
       <type refid="true-false"/>
       <value>true</value>
     </setting>
+    <setting name="hazelcastNotification">
+      <type refid="true-false"/>
+      <value>true</value>
+    </setting>
     <setting name="password-policy">
       <type refid="policy-type" />
     </setting>
@@ -70,11 +74,31 @@
         <string minLen="8" password="yes"/>
       </type>
     </setting>
+    <setting name="password-default-confirm">
+      <type>
+    	<string minLen="8" password="yes"/> 
+      </type>
+    </setting>    
     <setting name="vmpin-default">
       <type>
         <string minLen="4" password="yes"/>
       </type>
     </setting>
+    <setting name="vmpin-default-confirm">
+      <type>
+        <string minLen="4" password="yes"/>
+      </type>
+    </setting>
+    <setting name="postgres-pwd">
+      <type>
+        <string minLen="8" password="yes"/>
+      </type>
+    </setting>
+    <setting name="postgres-pwd-confirm">
+      <type>
+        <string minLen="8" password="yes"/>
+      </type>
+    </setting>        
     <setting name="externalAliases.aliasAddins" advanced="yes">
       <type>
         <string/>
@@ -112,6 +136,10 @@
       <type refid="true-false"/>
       <value>false</value>
     </setting>
+    <setting name="allow-subscription-to-self" advanced="yes">
+      <type refid="true-false"/>
+      <value>false</value>
+    </setting>
     <setting name="account-name">
       <type refid="true-false"/>
       <value>false</value>
@@ -125,6 +153,10 @@
         <string/>
       </type>
     </setting>
+    <setting name="extAvatarSync">
+       <type refid="true-false"/>
+       <value>false</value>
+     </setting>    
   </group>
   <group name="ldap-management">
     <setting name="age">
@@ -151,6 +183,18 @@
       </type>
       <value>false</value>
     </setting>
+    <setting name="newUserGroupPrefix">
+      <type>
+    	<string/>
+      </type>
+      <value>New_LDAP</value>
+    </setting>
+    <setting name="stripUserName">
+      <type>
+    	<integer/>
+      </type>
+      <value>0</value>
+    </setting>        
   </group>
   <group name="user-portal">
     <setting name="old-portal">

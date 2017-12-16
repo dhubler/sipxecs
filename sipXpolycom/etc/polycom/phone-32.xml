@@ -379,9 +379,9 @@
             <option><value>G7221C.24kbps</value></option>
             <option><value>G7221C.32kbps</value></option>
             <option><value>G7221C.48kbps</value></option>
-            <option><value>Lin16.16ksps</value></option>
-            <option><value>Lin16.32ksps</value></option>
-            <option><value>Lin16.48ksps</value></option>
+            <option><value>Lin16.16kbps</value></option>
+            <option><value>Lin16.32kbps</value></option>
+            <option><value>Lin16.48kbps</value></option>
             <option><value>Siren14.24kbps</value></option>
             <option><value>Siren14.32kbps</value></option>
             <option><value>Siren14.48kbps</value></option>
@@ -405,11 +405,11 @@
             <option><value>G7221C.24kbps</value></option>
             <option><value>G7221C.32kbps</value></option>
             <option><value>G7221C.48kbps</value></option>
-            <option><value>Lin16.8ksps</value></option>
-            <option><value>Lin16.16ksps</value></option>
-            <option><value>Lin16.32ksps</value></option>
-            <option><value>Lin16.44ksps</value></option>
-            <option><value>Lin16.48ksps</value></option>
+            <option><value>Lin16.8kbps</value></option>
+            <option><value>Lin16.16kbps</value></option>
+            <option><value>Lin16.32kbps</value></option>
+            <option><value>Lin16.44kbps</value></option>
+            <option><value>Lin16.48kbps</value></option>
             <option><value>Siren14.24kbps</value></option>
             <option><value>Siren14.32kbps</value></option>
             <option><value>Siren14.48kbps</value></option>
@@ -1204,7 +1204,7 @@
         <type>
           <boolean />
         </type>
-        <value>1</value>
+        <value>0</value>
       </setting>
       <setting name="max_throughput">
         <type>
@@ -1228,7 +1228,7 @@
         <type>
           <integer min="0" max="7" />
         </type>
-        <value>5</value>
+        <value>3</value>
       </setting>
     </group>
   </group>
@@ -1740,13 +1740,13 @@
             </option>
           </enum>
         </type>
-        <value>1</value>
+        <value>2</value>
       </setting>
       <setting name="facility.set" hidden="yes">
         <type>
           <boolean />
         </type>
-        <value>1</value>
+        <value>2</value>
       </setting>
           <setting name="facility">
         <type>
@@ -2358,7 +2358,7 @@
       </setting>
       <setting name="transport">
         <type refid="transport" />
-        <value>UDPonly</value>
+        <value>TCPonly</value>
       </setting>
     </group>
   </group>
@@ -2367,9 +2367,9 @@
         <type>
           <boolean />
         </type>
-        <value>0</value>
+        <value>1</value>
     </setting>
-    <group name="serverFeatureControl">
+    <group name="serverFeatureControl" advanced="yes">
       <setting name="cf">
         <type>
           <boolean />
@@ -2449,6 +2449,14 @@
           <string />
         </type>
         <value />
+      </setting>
+    </group>
+    <group name="cid">
+      <setting name="sourcePreference">
+        <type>
+          <string/>
+        </type>
+        <value>P-Asserted-Identity, Remote-Party-ID, From</value>
       </setting>
     </group>
     <group name="alertInfo">
@@ -3014,20 +3022,20 @@
         <value></value>
       </setting>
     </group>
-    <group name="bg" hidden="yes" if="polycomVVX500||polycom550||polycom560||polycom650||polycom670||polycom450||polycomVVX1500">
-      <setting name="bg.color.selection" if="polycomVVX500">
+    <group name="bg" hidden="yes" if="polycomVVX500||polycomRealPresenceTrio||polycom550||polycom560||polycom650||polycom670||polycom450||polycomVVX1500">
+      <setting name="bg.color.selection" if="polycomVVX500||polycomRealPresenceTrio">
         <type>
 		  <string />
 		</type>
         <value>2,1</value>        
       </setting>
-      <setting name="bg.color.bm.1.em.name" if="polycomVVX500">
+      <setting name="bg.color.bm.1.em.name" if="polycomVVX500||polycomRealPresenceTrio">
         <type>
 		  <string />
 		</type>
         <value>ezLogo320x240.jpg</value>        
       </setting>
-      <setting name="bg.color.bm.1.name" if="polycomVVX500">
+      <setting name="bg.color.bm.1.name" if="polycomVVX500||polycomRealPresenceTrio">
         <type>
 		  <string />
 		</type>

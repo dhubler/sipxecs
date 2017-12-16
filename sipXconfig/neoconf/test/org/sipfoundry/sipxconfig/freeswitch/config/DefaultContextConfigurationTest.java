@@ -60,6 +60,7 @@ public class DefaultContextConfigurationTest {
     public void setUp() {
         m_configuration = new DefaultContextConfiguration();
         m_configuration.setVelocityEngine(TestHelper.getVelocityEngine());
+        m_configuration.setFreeswitchEtcDir("/etc/sipxpbx/freeswitch/");
         Domain domain = new Domain();
         domain.setName("ezuce.ro");
         DomainManagerImpl manager = new DomainManagerImpl();
@@ -87,6 +88,41 @@ public class DefaultContextConfigurationTest {
             expect(conference.getDialString()).andReturn(DATA[i][6]).once();
 
             // the first one is disabled
+            expect(conference.isRecordAndPlayNameOnEntryEnabled()).andReturn(false).anyTimes();
+            expect(conference.isRecordAndPlayNameOnExitEnabled()).andReturn(false).anyTimes();
+            expect(conference.isEnabled()).andReturn(i > 0);
+            replay(conference);
+
+            conferences.add(conference);
+        }
+        Bridge bridge = new Bridge();
+        bridge.setConferences(conferences);
+        return bridge;
+    }
+
+    private Bridge createBridgeWithPrompts() {
+        Comparator<Conference> comparator = new Comparator<Conference>() {
+            @Override
+            public int compare(Conference o1, Conference o2) {
+                return o1.getId().compareTo(o2.getId());
+            }
+        };
+        Set<Conference> conferences = new TreeSet<Conference>(comparator);
+        for (int i = 0; i < DATA.length; i++) {
+            Conference conference = createMock(Conference.class);
+
+            expect(conference.getId()).andReturn(i).anyTimes();
+            expect(conference.getName()).andReturn(DATA[i][0]).anyTimes();
+            expect(conference.getExtension()).andReturn(DATA[i][1]).anyTimes();
+            expect(conference.getOrganizerAccessCode()).andReturn(DATA[i][2]).anyTimes();
+            expect(conference.getParticipantAccessCode()).andReturn(DATA[i][3]).anyTimes();
+            expect(conference.getRemoteAdmitSecret()).andReturn(DATA[i][4]).anyTimes();
+            expect(conference.getUri()).andReturn(DATA[i][5]).anyTimes();
+            expect(conference.getDialString()).andReturn(DATA[i][6]).once();
+
+            // the first one is disabled
+            expect(conference.isRecordAndPlayNameOnEntryEnabled()).andReturn(true).anyTimes();
+            expect(conference.isRecordAndPlayNameOnExitEnabled()).andReturn(i < 2).anyTimes();
             expect(conference.isEnabled()).andReturn(i > 0);
             replay(conference);
 
@@ -129,7 +165,7 @@ public class DefaultContextConfigurationTest {
         mc.andReturn(null);
         mc.replay();
         m_configuration.setFeatureManager(mgr);
-        m_configuration.write(actual, location, bridge, false, false, null, extensions, false);
+        m_configuration.write(actual, location, bridge, false, false, false, null, extensions, false, true, null);
         String expected = IOUtils
                 .toString(getClass().getResourceAsStream("default_context-no-conferences.test.xml"));
         assertEquals(expected, actual.toString());
@@ -147,7 +183,7 @@ public class DefaultContextConfigurationTest {
         mc.replay();
         m_configuration.setFeatureManager(mgr);
         List<FreeswitchExtension> extensions = getExtensions();
-        m_configuration.write(actual, location, bridge, false, false, null, extensions, true);
+        m_configuration.write(actual, location, bridge, false, false, false, null, extensions, true, true, 10);
         String expected = IOUtils.toString(getClass().getResourceAsStream(
                 "default_context_freeswitch_extensions.test.xml"));
         assertEquals(expected, actual.toString());
@@ -165,8 +201,25 @@ public class DefaultContextConfigurationTest {
         m_configuration.setFeatureManager(mgr);
         Bridge bridge = createBridge();
         List<FreeswitchExtension> extensions = Collections.emptyList();
-        m_configuration.write(actual, location, bridge, false, false, null, extensions, false);
+        m_configuration.write(actual, location, bridge, false, false, false, null, extensions, false, true, null);
         String expected = IOUtils.toString(getClass().getResourceAsStream("default_context.test.xml"));
+        assertEquals(expected, actual.toString());
+    }
+
+    @Test
+    public void testConferenceConfigWithPrompts() throws Exception {
+        StringWriter actual = new StringWriter();
+        Location location = TestHelper.createDefaultLocation();
+        IMocksControl mc = EasyMock.createControl();
+        FeatureManager mgr = mc.createMock(FeatureManager.class);
+        mgr.getLocationsForEnabledFeature(Ivr.FEATURE);
+        mc.andReturn(null);
+        mc.replay();
+        m_configuration.setFeatureManager(mgr);
+        Bridge bridge = createBridgeWithPrompts();
+        List<FreeswitchExtension> extensions = Collections.emptyList();
+        m_configuration.write(actual, location, bridge, false, false, false, null, extensions, false, true, null);
+        String expected = IOUtils.toString(getClass().getResourceAsStream("default_context_with_prompts.test.xml"));
         assertEquals(expected, actual.toString());
     }
 
@@ -182,8 +235,25 @@ public class DefaultContextConfigurationTest {
         m_configuration.setFeatureManager(mgr);
         Bridge bridge = new Bridge();
         List<FreeswitchExtension> extensions = Collections.emptyList();
-        m_configuration.write(actual, location, bridge, true, false, null, extensions, false);
+        m_configuration.write(actual, location, bridge, true, false, false, null, extensions, false, true, 30);
         String expected = IOUtils.toString(getClass().getResourceAsStream("default_context-authcodes.test.xml"));
+        assertEquals(expected, actual.toString());
+    }
+
+    @Test
+    public void testCallbackConfig() throws Exception {
+        StringWriter actual = new StringWriter();
+        Location location = TestHelper.createDefaultLocation();
+        IMocksControl mc = EasyMock.createControl();
+        FeatureManager mgr = mc.createMock(FeatureManager.class);
+        mgr.getLocationsForEnabledFeature(Ivr.FEATURE);
+        mc.andReturn(null);
+        mc.replay();
+        m_configuration.setFeatureManager(mgr);
+        Bridge bridge = new Bridge();
+        List<FreeswitchExtension> extensions = Collections.emptyList();
+        m_configuration.write(actual, location, bridge, false, true, false, null, extensions, false, true, null);
+        String expected = IOUtils.toString(getClass().getResourceAsStream("default_context-callback.test.xml"));
         assertEquals(expected, actual.toString());
     }
 
@@ -208,7 +278,7 @@ public class DefaultContextConfigurationTest {
         m_configuration.setFeatureManager(mgr);
         Bridge bridge = new Bridge();
         List<FreeswitchExtension> extensions = Collections.emptyList();
-        m_configuration.write(actual, manila, bridge, false, false, null, extensions, false);
+        m_configuration.write(actual, manila, bridge, false, false, false, null, extensions, false, true, 35);
         String expected = IOUtils.toString(getClass().getResourceAsStream("default_context-vms.test.xml"));
         assertEquals(expected, actual.toString());
     }
@@ -252,7 +322,7 @@ public class DefaultContextConfigurationTest {
         orbit4.setName("Full");
         orbit4.setMusic("custom.wav");
         orbits.add(orbit4);
-        m_configuration.write(actual, location, bridge, false, true, orbits, extensions, true);
+        m_configuration.write(actual, location, bridge, false, false, true, orbits, extensions, true, false, 20);
         String expected = IOUtils.toString(getClass().getResourceAsStream("default_context_orbits.test.xml"));
         assertEquals(expected, actual.toString());
     }

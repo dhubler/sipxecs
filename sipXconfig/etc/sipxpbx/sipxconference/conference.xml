@@ -48,6 +48,22 @@
       <type refid="yes-no" />
       <value>yes</value>
     </setting>
+    <setting name="play-entry-tone">
+      <type refid="yes-no" />
+      <value>yes</value>
+    </setting>
+    <setting name="play-exit-tone">
+      <type refid="yes-no" />
+      <value>yes</value>
+    </setting>
+    <setting name="prompt-name-on-entry">
+      <type refid="yes-no" />
+      <value>no</value>
+    </setting>
+    <setting name="prompt-name-on-exit">
+      <type refid="yes-no" />
+      <value>no</value>
+    </setting>
     <setting name="video">
       <type refid="yes-no" />
       <value>no</value>
@@ -95,26 +111,6 @@
       <value>FILES_SRC</value>
     </setting>
     <setting name="FS_BRIDGE_CONFERENCE.REMOTE_ADMIT.SECRET" hidden="yes" />
-  </group>
-  <group name="chat-meeting">
-    <setting name="moderated">
-      <type>
-        <boolean />
-      </type>
-      <value>0</value>
-    </setting>
-    <setting name="public">
-      <type>
-        <boolean />
-      </type>
-      <value>1</value>
-    </setting>
-    <setting name="members-only" hidden="yes">
-      <type>
-        <boolean />
-      </type>
-      <value>0</value>
-    </setting>
   </group>
   <group name="conference">
     <setting name="language">

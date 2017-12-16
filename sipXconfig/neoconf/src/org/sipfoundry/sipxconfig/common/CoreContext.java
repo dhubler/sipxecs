@@ -147,7 +147,7 @@ public interface CoreContext extends DataObjectSource<User>, AliasOwner, Replica
      * @see spring 3 security guidelines
      * @param group
      */
-    void saveGroup(Group group);
+    void storeGroup(Group group);
 
     /**
      * This method is meant to be intercepted when user group saving permissions are effective
@@ -227,4 +227,6 @@ public interface CoreContext extends DataObjectSource<User>, AliasOwner, Replica
     int getDisabledUsersCount();
 
     int getPhantomUsersCount();
+
+    int getPhantomUsersWithoutSuperadminCount();
 }

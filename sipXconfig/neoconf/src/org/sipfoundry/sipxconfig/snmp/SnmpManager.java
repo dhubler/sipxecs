@@ -20,6 +20,7 @@ import java.util.Collection;
 import java.util.List;
 
 import org.sipfoundry.sipxconfig.address.AddressType;
+import org.sipfoundry.sipxconfig.cfgmgt.ConfigManager;
 import org.sipfoundry.sipxconfig.commserver.Location;
 import org.sipfoundry.sipxconfig.commserver.ServiceStatus;
 import org.sipfoundry.sipxconfig.feature.FeatureManager;
@@ -45,4 +46,8 @@ public interface SnmpManager {
     public List<ProcessDefinition> getProcessDefinitions(Location location, Collection<String> processId);
 
     public void restartProcesses(Location location, Collection<ProcessDefinition> processes);
+
+    public void restartProcessesInAllLocations(Collection<ProcessDefinition> processes);
+
+    public ConfigManager getConfigManager();
 }

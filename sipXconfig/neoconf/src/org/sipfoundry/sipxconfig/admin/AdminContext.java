@@ -54,5 +54,14 @@ public interface AdminContext {
 
     boolean isAuthEmailAddress();
 
-    boolean isSystemAuditEnabled();
+    String getNewLdapUserGroupNamePrefix();
+
+    int getStripUserName();
+
+    boolean isHazelcastEnabled();
+
+    boolean isSyncExtAvatar();
+
+    boolean isAllowSubscriptionsToSelf();
+
 }

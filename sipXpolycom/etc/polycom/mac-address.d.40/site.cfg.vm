@@ -320,10 +320,12 @@
 #end
 
   <divert
-#set($start = 1)
-#set($end = $lines)
-#foreach($i in [$start..$end])
-    divert.fwd.${i}.enabled="0"
+#foreach ($line in $lines)
+#set ($i = $velocityCount)
+#set ($group = $line.getSetting('call').getSetting('fwd'))
+#foreach ($setting in $cfg.getSettings($group))
+      divert.fwd.${i}.${setting.ProfileName}="$!{setting.Value}"
+#end
 #end
   />
   
@@ -332,6 +334,11 @@
 #set ($group = $cfg.EndpointSettings.getSetting('log').getSetting('device.syslog'))
 #foreach ($setting in $cfg.getSettings($group))
     device.syslog.${setting.ProfileName}="$!{setting.Value}"
+#end
+
+#set ($group = $cfg.EndpointSettings.getSetting('auth'))
+#foreach ($setting in $cfg.getSettings($group))
+    device.auth.${setting.ProfileName}="$!{setting.Value}"
 #end
 
 #set ($group = $cfg.EndpointSettings.getSetting('network').getSetting('device.net'))
@@ -369,14 +376,21 @@ sec.TLS.profile.1.caCert.platform2="0"
 />
 #end
 
-#set ($prov = $cfg.EndpointSettings.getSetting('prov'))
-#if($prov)
+
+#set ($prov_login = $cfg.EndpointSettings.getSetting('prov').getSetting('prov_login'))
+#if($prov_login)
 <prov
-#foreach ($setting in $cfg.getRecursiveSettings($prov))
+#foreach ($setting in $cfg.getRecursiveSettings($prov_login))
           prov.${setting.ProfileName}="$!{setting.Value}"
 #end
-/>
 #end
+#set ($prov_device = $cfg.EndpointSettings.getSetting('prov').getSetting('prov_device'))
+#if($prov_device)
+#foreach ($setting in $cfg.getRecursiveSettings($prov_device))
+          device.prov.${setting.ProfileName}="$!{setting.Value}"
+#end
+#end
+/>
 
 #set ($keyboard = $cfg.EndpointSettings.getSetting('keyboard'))
 #if($keyboard)
@@ -432,11 +446,20 @@ sec.TLS.profile.1.caCert.platform2="0"
 />
 #end
 
-#set ($softKey = $cfg.EndpointSettings.getSetting('softKey'))
-#if($softKey)
+#set ($softKeyFeature = $cfg.EndpointSettings.getSetting('softKey').getSetting('feature'))
+#if($softKeyFeature)
 <softKey
-#foreach ($setting in $cfg.getRecursiveSettings($softKey))
-          softKey.${setting.ProfileName}="$!{setting.Value}"
+#foreach ($setting in $cfg.getRecursiveSettings($softKeyFeature))
+          softKey.feature.${setting.ProfileName}="$!{setting.Value}"
+#end
+/>
+#end
+
+#set ($softKeyEfk = $cfg.EndpointSettings.getSetting('softKey').getSetting('efk'))
+#if($softKeyEfk)
+<change
+#foreach ($setting in $cfg.getRecursiveSettings($softKeyEfk))
+          efk.${setting.ProfileName}="$!{setting.Value}"
 #end
 />
 #end

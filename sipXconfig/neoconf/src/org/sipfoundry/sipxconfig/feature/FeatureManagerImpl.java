@@ -356,6 +356,11 @@ public class FeatureManagerImpl extends SipxHibernateDaoSupport implements BeanF
             // location.
             Location location = (Location) entity;
             if (location.isUninitialized()) {
+                m_jdbcTemplate.execute(format("delete from settings_location_group where settings_with_location_id in"
+                    + " (select settings_with_location_id from settings_with_location where location_id=%d)",
+                    location.getId()));
+                m_jdbcTemplate.execute(format("delete from settings_with_location where location_id=%d",
+                        location.getId()));
                 m_jdbcTemplate.execute(format("delete from feature_local where location_id=%d", location.getId()));
             }
             Set<LocationFeature> on = getEnabledLocationFeatures(location);
@@ -390,7 +395,7 @@ public class FeatureManagerImpl extends SipxHibernateDaoSupport implements BeanF
     @Override
     public Collection<Bundle> getBundles(FeatureManager manager) {
         List<Bundle> bundles = new ArrayList<Bundle>(Arrays.asList(Bundle.CORE, Bundle.CORE_TELEPHONY,
-                Bundle.CALL_CENTER, Bundle.IM, Bundle.PROVISION));
+                Bundle.CALL_CENTER, Bundle.IM, Bundle.PROVISION, Bundle.UTILITY_SERVICES));
         if (m_showExperimentalBundles) {
             bundles.add(Bundle.EXPERIMENTAL);
         }

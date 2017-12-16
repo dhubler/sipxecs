@@ -223,6 +223,7 @@ class SipRouter : public OsServerTask
    //
    void modifyFinalResponse(SipTransaction* pTransaction, const SipMessage& request, SipMessage& finalResponse);
 
+   UtlBoolean suppressAlertIndicatorForTransfers() const;
    
 /* //////////////////////////// PROTECTED ///////////////////////////////// */
   protected:
@@ -271,6 +272,10 @@ class SipRouter : public OsServerTask
    
    bool preDispatch(SipMessage* pMsg);
    
+   bool preprocessMessage(SipMessage& msg,
+                                  const UtlString& msgText,
+                                  int msgLength);
+   
    void registerDispatchTimer(DispatchTimer& dispatchTimer);
    
    Int64 getLastDispatchSpeed() const;
@@ -304,6 +309,8 @@ class SipRouter : public OsServerTask
    //
    void performPreRoutingChecks(SipMessage& sipRequest);
    // @cond INCLUDENOCOPY
+   
+   void identifyCallerLocation(SipMessage& sipRequest);
 
    // There is no copy constructor.
    SipRouter(const SipRouter& rsipRouter);
@@ -334,6 +341,7 @@ class SipRouter : public OsServerTask
    UtlBoolean _trustSbcRegisteredCalls;
    TrustedRequestModifiers _trustedRequestModifiers;
    FinalResponseModifiers _finalResponseModifiers;
+   UtlBoolean _suppressAlertIndicatorForTransfers;
 };
 
 /* ============================ INLINE METHODS ============================ */
@@ -353,5 +361,10 @@ inline UtlBoolean SipRouter::trustSbcRegisteredCalls() const
   return _trustSbcRegisteredCalls;
 }
 
+
+inline UtlBoolean SipRouter::suppressAlertIndicatorForTransfers() const
+{
+  return _suppressAlertIndicatorForTransfers;
+}
 
 #endif  // _SipRouter_h_

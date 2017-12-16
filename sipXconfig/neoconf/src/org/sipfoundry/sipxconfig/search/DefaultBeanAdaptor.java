@@ -9,8 +9,12 @@
 package org.sipfoundry.sipxconfig.search;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang.ArrayUtils;
@@ -31,18 +35,24 @@ import org.sipfoundry.sipxconfig.conference.Bridge;
 import org.sipfoundry.sipxconfig.conference.Conference;
 import org.sipfoundry.sipxconfig.dialplan.AutoAttendant;
 import org.sipfoundry.sipxconfig.dialplan.DialingRule;
+import org.sipfoundry.sipxconfig.freeswitch.FreeswitchExtension;
 import org.sipfoundry.sipxconfig.gateway.Gateway;
 import org.sipfoundry.sipxconfig.parkorbit.ParkOrbit;
 import org.sipfoundry.sipxconfig.phone.Phone;
 import org.sipfoundry.sipxconfig.setting.Group;
+import org.sipfoundry.sipxconfig.setting.ValueStorage;
 import org.sipfoundry.sipxconfig.upload.Upload;
+import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.BeanFactoryAware;
+import org.springframework.beans.factory.ListableBeanFactory;
 
-public class DefaultBeanAdaptor implements BeanAdaptor {
+public class DefaultBeanAdaptor implements BeanAdaptor, BeanFactoryAware {
     /** only those classes can be used to search by class */
-    public static final Class[] CLASSES = {
+    private static final Class[] CLASSES = {
         // TODO: inject externally
         User.class, Phone.class, Group.class, Gateway.class, CallGroup.class, DialingRule.class, Bridge.class,
-        Conference.class, ParkOrbit.class, AutoAttendant.class, Upload.class, Branch.class, AuthCode.class
+        Conference.class, ParkOrbit.class, AutoAttendant.class, Upload.class, Branch.class, AuthCode.class,
+        FreeswitchExtension.class
     };
 
     private static final Log LOG = LogFactory.getLog(DefaultBeanAdaptor.class);
@@ -54,11 +64,14 @@ public class DefaultBeanAdaptor implements BeanAdaptor {
         "description"
     };
 
+    private static final String NAME = "name";
+
     /**
      * List of fields that will be part of index name
      */
     private static final String[] NAME_FIELDS = {
-        "lastName", "firstName", "name", "extension", "userName", "serialNumber", "host", "code"
+        "lastName", "firstName", NAME, "extension", "userName", "serialNumber", "host", "code",
+        User.FAX_EXTENSION_SETTING, User.DID_SETTING
     };
 
     /**
@@ -93,7 +106,24 @@ public class DefaultBeanAdaptor implements BeanAdaptor {
         Arrays.sort(SENSITIVE_FIELDS);
     }
 
-    private Class[] m_indexedClasses = CLASSES;
+    private ListableBeanFactory m_beanFactory;
+    private Class[] m_indexedClasses;
+
+    @Override
+    public Class[] getIndexedClasses() {
+        List<Class> classesList = new ArrayList<Class>(Arrays.asList(CLASSES));
+        Map<String, BeanAdaptorPlugin> beanAdaptorPluginsMap = m_beanFactory.getBeansOfType(BeanAdaptorPlugin.class);
+        if (beanAdaptorPluginsMap != null) {
+            Collection<BeanAdaptorPlugin> beanAdaptorPluginsClasses = beanAdaptorPluginsMap.values();
+            if (!beanAdaptorPluginsClasses.isEmpty()) {
+                for (BeanAdaptorPlugin beanAdaptorPlugin : beanAdaptorPluginsClasses) {
+                    List<Class> indexedClasses = beanAdaptorPlugin.getIndexedClasses();
+                    classesList.addAll(indexedClasses);
+                }
+            }
+        }
+        return (Class[]) classesList.toArray(new Class[classesList.size()]);
+    }
 
     public void setIndexedClasses(Class[] indexedClasses) {
         m_indexedClasses = indexedClasses;
@@ -139,6 +169,40 @@ public class DefaultBeanAdaptor implements BeanAdaptor {
                 document.add(new Field(Indexer.DEFAULT_FIELD, alias, Field.Store.NO, Field.Index.ANALYZED));
             }
             return true;
+        }  else if (state instanceof ValueStorage) {
+            // handle settings values
+            ValueStorage valueStorage = (ValueStorage) state;
+            Map databaseValues = valueStorage.getDatabaseValues();
+            Set<String> keySet = databaseValues.keySet();
+            for (String key : keySet) {
+                if (Arrays.binarySearch(FIELDS, key) >= 0) {
+                    String value = databaseValues.get(key).toString();
+                    document.add(new Field(key, value, Field.Store.YES, Field.Index.ANALYZED));
+                    document.add(new Field(Indexer.DEFAULT_FIELD, value, Field.Store.NO, Field.Index.ANALYZED));
+                }
+            }
+            return true;
+        } else if (state instanceof IndexedBean) {
+            IndexedBean indexedBean = (IndexedBean) state;
+            for (String value : indexedBean.getIndexValues()) {
+                document.add(new Field(NAME, value, Field.Store.YES, Field.Index.ANALYZED));
+                document.add(new Field(Indexer.DEFAULT_FIELD, value, Field.Store.NO, Field.Index.ANALYZED));
+            }
+            return true;
+        } else if (state instanceof Collection<?>) {
+            Collection<?> collection = (Collection<?>) state;
+            for (Iterator a = collection.iterator(); a.hasNext();) {
+                Object object = a.next();
+                if (!(object instanceof IndexedBean)) {
+                    break;
+                }
+                IndexedBean condition = (IndexedBean) object;
+                for (String value : condition.getIndexValues()) {
+                    document.add(new Field(NAME, value, Field.Store.NO, Field.Index.ANALYZED));
+                    document.add(new Field(Indexer.DEFAULT_FIELD, value, Field.Store.NO, Field.Index.ANALYZED));
+                }
+                return true;
+            }
         }
         return false;
     }
@@ -188,7 +252,7 @@ public class DefaultBeanAdaptor implements BeanAdaptor {
     private String fieldsToString(Document doc, String[] fields) {
         StringBuffer buffer = new StringBuffer();
         for (int i = 0; i < fields.length; i++) {
-            Field field = doc.getField(fields[i]);
+            Field field = (Field) doc.getField(fields[i]);
             if (field == null) {
                 continue;
             }
@@ -199,5 +263,11 @@ public class DefaultBeanAdaptor implements BeanAdaptor {
 
         }
         return buffer.toString();
+    }
+
+    @Override
+    public void setBeanFactory(BeanFactory beanFactory) {
+        m_beanFactory = (ListableBeanFactory) beanFactory;
+        m_indexedClasses = getIndexedClasses();
     }
 }

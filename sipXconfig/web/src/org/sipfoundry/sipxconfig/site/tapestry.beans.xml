@@ -50,6 +50,15 @@
       <value>Please enter digits or sip address only, for example: 123 or john@example.com</value>
     </property>
   </bean>
+  <!--only digits, at least one, no zero -->
+  <bean name="allDigitsNoZero" class="org.apache.tapestry.form.validator.Pattern">
+    <property name="pattern">
+      <value>^[1-9][0-9]*$</value>
+    </property>
+    <property name="message">
+      <value>Please enter digits only, for example: 10. Value cannot be 0.</value>
+    </property>
+  </bean>
   <bean name="validHostOrIp" class="org.apache.tapestry.form.validator.Pattern">
     <property name="pattern">
       <value>&DNS_DOMAIN_NAME;|&IP_ADDR;</value>
@@ -61,6 +70,10 @@
   <bean name="validIPv4" class="org.apache.tapestry.form.validator.Pattern">
     <property name="pattern" value="&IP_ADDR;" />
     <property name="message" value="Please enter a valid IPv4 address, for example: 10.1.1.0" />
+  </bean>
+  <bean name="validEmail" class="org.apache.tapestry.form.validator.Pattern">
+    <property name="pattern" value="[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]+" />
+    <property name="message" value="Please enter a valid email address. Format is user@hostname." />
   </bean>
   <!-- distribution lists validator - space-separated list of extensions, can be empty -->
   <bean name="validExtensions" class="org.apache.tapestry.form.validator.Pattern">
@@ -83,7 +96,7 @@
   <!-- Username sequence validator - space-separated list of usernames, can be empty -->
   <bean name="validUsernamePatternSequence" class="org.apache.tapestry.form.validator.Pattern">
     <property name="pattern">
-      <value>((([&SIP_USER_CHARS;]|&SIP_USER_ESCAPED;)+)\s*)*</value>
+      <value>([&SIP_USER_CHARS;\s]*(&SIP_USER_ESCAPED;)*)+</value>
     </property>
     <property name="message">
       <value>Please enter a list of numbers or names, for example: joe 508</value>
@@ -100,6 +113,12 @@
     <property name="pattern" value="\*(\.[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*[a-zA-Z0-9]*)*" />
     <property name="message" value="Please enter a valid domain pattern: *.example.org or *.net" />
   </bean>
+
+  <bean name="validInboundMatchingDns" class="org.apache.tapestry.form.validator.Pattern">
+    <property name="pattern" value="(\*|\?|^)(\.?[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*[a-zA-Z0-9]*)+" />
+    <property name="message" value="Please enter a valid domain pattern: test.example.org or *.example.org or ?.example.org" />
+  </bean>
+
   <bean name="validIPv4subnet" class="org.apache.tapestry.form.validator.Pattern">
     <property name="pattern" value="[0-9]{1,3}(\.[0-9]{1,3}){0,3}/[0-9]{1,2}" />
     <property name="message" value="Please enter a valid IP4 subnet address, for example: 10.1.1.0/24" />

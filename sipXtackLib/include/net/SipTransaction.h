@@ -199,6 +199,9 @@ public:
     static void buildHash(const SipMessage& message,
                           UtlBoolean isOutgoing,
                           UtlString& hash);
+    
+    void buildHash(       UtlBoolean isServerTransaction,
+                          UtlString& hash);
 
     SipTransaction* getTopMostParent() const;
 
@@ -331,10 +334,19 @@ public:
     // Set the data to be used to generate a Reason header for any CANCEL
     // generated for any child transaction.
 
+    const UtlString &getRequestUri(void) const;
+
     UtlSList& childTransactions();
 
     bool isMarkedForDeletion() const;
+    
     void markForDeletion();
+    
+    static void setTcpResendTimes(int resendTimes);
+    static int getTcpResendTimes();
+    
+    static void setUdpResendTimes(int resendTimes);
+    static int getUdpResendTimes();
 /* //////////////////////////// PROTECTED ///////////////////////////////// */
 protected:
     void handleChildTimeoutEvent(SipTransaction& child,

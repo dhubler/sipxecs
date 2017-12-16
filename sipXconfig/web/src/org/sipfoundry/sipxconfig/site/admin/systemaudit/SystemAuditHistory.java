@@ -34,12 +34,12 @@ import org.apache.tapestry.IRequestCycle;
 import org.apache.tapestry.annotations.Bean;
 import org.apache.tapestry.annotations.InjectObject;
 import org.apache.tapestry.annotations.Persist;
-import org.apache.tapestry.contrib.table.model.IBasicTableModel;
 import org.apache.tapestry.event.PageBeginRenderListener;
 import org.apache.tapestry.event.PageEvent;
 import org.apache.tapestry.form.IPropertySelectionModel;
 import org.apache.tapestry.form.StringPropertySelectionModel;
 import org.apache.tapestry.web.WebResponse;
+import org.sipfoundry.commons.util.TimeZoneUtils;
 import org.sipfoundry.sipxconfig.common.CoreContext;
 import org.sipfoundry.sipxconfig.common.User;
 import org.sipfoundry.sipxconfig.common.UserException;
@@ -49,7 +49,6 @@ import org.sipfoundry.sipxconfig.components.SipxValidationDelegate;
 import org.sipfoundry.sipxconfig.components.TapestryUtils;
 import org.sipfoundry.sipxconfig.setting.Group;
 import org.sipfoundry.sipxconfig.setting.SettingDao;
-import org.sipfoundry.sipxconfig.site.cdr.CdrHistory;
 import org.sipfoundry.sipxconfig.site.user.EditUser;
 import org.sipfoundry.sipxconfig.systemaudit.ConfigChangeAction;
 import org.sipfoundry.sipxconfig.systemaudit.ConfigChangeContext;
@@ -193,11 +192,11 @@ public abstract class SystemAuditHistory extends BaseComponent implements PageBe
         }
 
         if (getEndDate() == null) {
-            setEndDate(CdrHistory.getDefaultEndTime());
+            setEndDate(TimeZoneUtils.getDefaultEndTime(null));
         }
 
         if (getStartDate() == null) {
-            Date startTime = CdrHistory.getDefaultStartTime(getEndDate());
+            Date startTime = TimeZoneUtils.getDefaultStartTime(getEndDate(), null);
             setStartDate(startTime);
         }
 
@@ -207,9 +206,8 @@ public abstract class SystemAuditHistory extends BaseComponent implements PageBe
         }
     }
 
-    public IBasicTableModel getTableModel() {
-        return new ConfigChangeTableModel(getConfigChangeContext(),
-                getGroupId(), getCurrentFilter());
+    public ConfigChangeTableModel getTableModel() {
+        return new ConfigChangeTableModel(getConfigChangeContext(), getCurrentFilter());
     }
 
     private Set<Group> getGroups() {
@@ -244,8 +242,9 @@ public abstract class SystemAuditHistory extends BaseComponent implements PageBe
             localizedDetails = getMessages().getMessage(
                     details.replaceAll(" ", "").toLowerCase());
         }
-        SystemAuditFilter filter = new SystemAuditFilter(getStartDate(),
-                getEndDate(), getType(), getAction(), getUser(), details,
+        String type = (getType() == null || getType().equals(ConfigChangeType.ALL.getValue())) ? null : getType();
+        String action = (getAction() == null || getAction().equals(ConfigChangeAction.ALL.getValue())) ? null : getAction().getAction();
+        SystemAuditFilter filter = new SystemAuditFilter(getStartDate(), getEndDate(), type, action, getUser(), details,
                 localizedDetails, getGroups());
         return filter;
     }

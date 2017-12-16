@@ -41,16 +41,6 @@
       </option>
     </enum>
   </type>
-  <type id="recordrate">
-    <enum>
-      <option>
-        <value>8000</value>
-      </option>
-      <option>
-        <value>16000</value>
-      </option>
-    </enum>
-  </type>
   <type id="faxformat">
     <enum>
       <option>
@@ -70,10 +60,6 @@
       <type refid="audioformat" />
       <value>wav</value>
     </setting>
-    <setting name="record.rate">
-      <type refid="recordrate" />
-      <value>8000</value>
-    </setting>
     <setting name="record.time">
       <type><integer /></type>
       <value>300</value>
@@ -81,6 +67,19 @@
     <setting name="fax.format">
       <type refid="faxformat" />
       <value>pdf</value>
+    </setting>
+    <setting name="fax.reinvite">
+      <type>
+        <enum>
+          <option>
+            <value>true</value>
+          </option>
+          <option>
+            <value>false</value>
+          </option>
+        </enum>
+      </type>
+      <value>false</value>
     </setting>
     <setting name="ivr.publicHttpPort" advanced="yes">
       <type>
@@ -129,6 +128,37 @@
         <integer min="0" />
       </type>
       <value>5000</value>
+    </setting>
+    <setting name="ivr.transferByBridge">
+      <type>
+        <enum>
+          <option>
+            <value>true</value>
+          </option>
+          <option>
+            <value>false</value>
+          </option>
+        </enum>
+      </type>
+      <value>false</value>
+    </setting>
+    <setting name="ivr.backup_host">
+      <type>
+        <enum>
+        </enum>
+      </type>
+    </setting>
+    <setting name="security.autoEnterPinExternalDigits" advanced="yes">
+      <type>
+        <integer min="0" max="15"/>
+      </type>
+      <value>0</value>
+    </setting>
+    <setting name="security.cleanupVoicemailHour" advanced="yes">
+      <type>
+        <integer min="0" max="23"/>
+      </type>
+      <value>0</value>
     </setting>
   </group>
 </model>

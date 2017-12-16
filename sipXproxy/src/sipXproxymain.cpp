@@ -67,6 +67,11 @@
 // Default expiry times (in seconds)
 #define DEFAULT_SIP_TRANSACTION_EXPIRES 180
 #define DEFAULT_SIP_SERIAL_EXPIRES 20
+#define DEFAULT_SIP_RETRAN 4
+#define SIP_MIN_RTT 100
+#define SIP_MAX_RTT 500
+#define SIP_MIN_RETRAN 2
+#define SIP_MAX_RETRAN 7
 
 #define EXIT_ON_TERMINATION true
 
@@ -74,10 +79,12 @@ static const char* CONFIG_SETTING_CALL_STATE_DB = "SIPX_PROXY_CALL_STATE_DB";
 static const char* CONFIG_SETTING_CALL_STATE_DB_HOST = "SIPX_PROXY_CALL_STATE_DB_HOST";
 static const char* CONFIG_SETTING_CALL_STATE_DB_NAME = "SIPX_PROXY_CALL_STATE_DB_NAME";
 static const char* CONFIG_SETTING_CALL_STATE_DB_USER = "SIPX_PROXY_CALL_STATE_DB_USER";
+static const char* CONFIG_SETTING_CALL_STATE_DB_PASSWORD = "SIPX_PROXY_CALL_STATE_DB_PASSWORD";
 static const char* CONFIG_SETTING_CALL_STATE_DB_DRIVER = "SIPX_PROXY_CALL_STATE_DB_DRIVER";
 static const char* CALL_STATE_DATABASE_HOST = "localhost";
 static const char* CALL_STATE_DATABASE_NAME = "SIPXCDR";
 static const char* CALL_STATE_DATABASE_USER = POSTGRESQL_USER;
+static const char* CALL_STATE_DATABASE_PASSWORD = "";
 static const char* CALL_STATE_DATABASE_DRIVER = "{PostgreSQL}";
 static const char* PROXY_CONFIG_PREFIX = "SIPX_PROXY";
 
@@ -99,7 +106,7 @@ int proxy()
     UtlString ipAddress;
 
     OsServiceOptions& osServiceOptions = SipXApplication::instance().getConfig();
-
+   
     OsSocket::getHostIp(&ipAddress);
 
     osServiceOptions.getOption(CONFIG_SETTING_BIND_IP, bindIp);
@@ -270,6 +277,7 @@ int proxy()
     UtlString callStateDbHostName;
     UtlString callStateDbName;
     UtlString callStateDbUserName;
+    UtlString callStateDbPassword;
     UtlString callStateDbDriver;    
     if (enableCallStateDbObserver)
     {
@@ -294,6 +302,11 @@ int proxy()
       {
         callStateDbUserName = CALL_STATE_DATABASE_USER;
       }
+      osServiceOptions.getOption(CONFIG_SETTING_CALL_STATE_DB_PASSWORD, callStateDbPassword);
+      if (callStateDbPassword.isNull())
+      {
+        callStateDbPassword = CALL_STATE_DATABASE_PASSWORD;
+      }      
       Os::Logger::instance().log(FAC_SIP, PRI_INFO, "%s : %s", CONFIG_SETTING_CALL_STATE_DB_USER,
           callStateDbUserName.data());
 
@@ -447,6 +460,51 @@ int proxy()
     }
 #endif // TEST_PRINT
     
+    int timerT1 = SIP_DEFAULT_RTT;
+    int sipRetran = DEFAULT_SIP_RETRAN;
+    
+    if (osServiceOptions.hasOption("SIPX_PROXY_DEFAULT_RTT"))
+    {
+      osServiceOptions.getOption("SIPX_PROXY_DEFAULT_RTT", timerT1);
+      if (timerT1 < SIP_MIN_RTT)
+      {
+        timerT1 = SIP_MIN_RTT;
+      }
+      else if (timerT1 > SIP_MAX_RTT)
+      {
+        timerT1 = SIP_MAX_RTT;
+      }
+      
+      OS_LOG_NOTICE(FAC_SIP,  "T1 Timer set by config.  Value: " << timerT1 << " ms");
+    }
+    else
+    {
+      OS_LOG_NOTICE(FAC_SIP,  "T1 Timer set to default.  Value: " << timerT1 << " ms");
+    }
+    
+    if (osServiceOptions.hasOption("SIPX_PROXY_RETRANSMIT_TIMES"))
+    {
+      osServiceOptions.getOption("SIPX_PROXY_RETRANSMIT_TIMES", sipRetran);
+      
+      if (sipRetran < SIP_MIN_RETRAN)
+      {
+        sipRetran = SIP_MIN_RETRAN;
+      }
+      else if (sipRetran > SIP_MAX_RETRAN)
+      {
+        sipRetran = SIP_MAX_RETRAN;
+      }
+      
+      SipTransaction::setTcpResendTimes(sipRetran);
+      SipTransaction::setUdpResendTimes(sipRetran);
+      
+      OS_LOG_NOTICE(FAC_SIP,  "Retransmit count set by config.  Value: " << sipRetran << " times");
+    }
+    else
+    {
+      OS_LOG_NOTICE(FAC_SIP,  "Retransmit count set to default.  Value: " << sipRetran << " times");
+    }
+    
     // Start the sip stack
     SipUserAgent* pSipUserAgent = new SipUserAgent(
         proxyTcpPort,
@@ -463,7 +521,7 @@ int proxy()
         NULL, // auth user IDs
         NULL, // auth passwords
         NULL, // line mgr
-        SIP_DEFAULT_RTT, // first resend timeout
+        timerT1, // first resend timeout
         FALSE, // default to proxy transaction
         SIPUA_DEFAULT_SERVER_UDP_BUFFER_SIZE, // socket layer read buffer size
         SIPUA_DEFAULT_SERVER_OSMSG_QUEUE_SIZE, // OsServerTask message queue size
@@ -505,7 +563,8 @@ int proxy()
        pEventWriter = new CallStateEventWriter_DB(callStateDbName.data(),
                                                   callStateDbHostName.data(),
                                                   callStateDbUserName,
-                                                  callStateDbDriver);      
+                                                  callStateDbDriver,
+                                                  callStateDbPassword);      
     }                                            
        
     if (pEventWriter)
@@ -522,6 +581,17 @@ int proxy()
        
        // and start the observer
        cseObserver = new SipXProxyCseObserver(*pSipUserAgent, domainName, pEventWriter);
+       
+       bool logAuthCodes = false;
+       osServiceOptions.getOption("SIPX_PROXY_LOG_AUTH_CODES", logAuthCodes, false);
+       
+       if (logAuthCodes)
+       {
+         cseObserver->setLogAuthCodes(true);
+         OS_LOG_NOTICE(FAC_SIP, "SipAuthProxyMain:: Auth Codes will be logged in CDRs");
+       }
+
+       
        cseObserver->start();
     }
     else

@@ -35,11 +35,11 @@ public class User {
     private Vector<String> m_aliases;
     private HashMap<String, DistributionList> m_distributionLists;
     private Locale m_locale; // The locale for the UI to present to this user
+    private boolean m_forwardDeleteVoicemail;
     private String m_emailAddress;
     private String m_altEmailAddress;
     private boolean m_attachAudioToEmail;
     private boolean m_altAttachAudioToEmail;
-    private ImapInfo m_imapInfo;
     private String m_cellNumber;
     private String m_homeNumber;
     private boolean m_imEnabled;
@@ -84,10 +84,14 @@ public class User {
     private boolean m_admin;
     private boolean m_hotelingEnabled;
     private boolean m_forcePinChange;
+    private boolean m_autoEnterPinExtension;
+    private boolean m_autoEnterPinExternal;
+    private int m_daysToKeepVM;
     private String m_vmLanguage;
+    private Vector<String> m_callbackUsers;
 
     public enum EmailFormats {
-        FORMAT_NONE("NONE"), FORMAT_FULL("FULL"), FORMAT_MEDIUM("MEDIUM"), FORMAT_BRIEF("BRIEF"), FORMAT_IMAP("IMAP");
+        FORMAT_NONE("NONE"), FORMAT_FULL("FULL"), FORMAT_MEDIUM("MEDIUM"), FORMAT_BRIEF("BRIEF");
         private final String m_id;
 
         EmailFormats(String id) {
@@ -258,6 +262,14 @@ public class User {
         m_locale = locale;
     }
 
+    public boolean isForwardDeleteVoicemail() {
+        return m_forwardDeleteVoicemail;
+    }
+
+    public void setForwardDeleteVoicemail(String value) {
+        m_forwardDeleteVoicemail = value.equals("1") || value.equals("true");
+    }
+
     public String getEmailAddress() {
         return m_emailAddress;
     }
@@ -312,14 +324,6 @@ public class User {
 
     public void setAltEmailFormat(String emailFormat) {
         m_altEmailFormat = EmailFormats.valueOfById(emailFormat);
-    }
-
-    public ImapInfo getImapInfo() {
-        return m_imapInfo;
-    }
-
-    public void setImapInfo(ImapInfo imapInfo) {
-        m_imapInfo = imapInfo;
     }
 
     public void setCellNum(String cellNum) {
@@ -719,6 +723,30 @@ public class User {
        m_forcePinChange = value.equals("1") || value.equals("true");
     }
 
+    public boolean isAutoEnterPinExtension() {
+        return m_autoEnterPinExtension;
+    }
+
+    public void setAutoEnterPinExtension(String value) {
+        m_autoEnterPinExtension = value.equals("1") || value.equals("true");
+    }
+
+    public boolean isAutoEnterPinExternal() {
+        return m_autoEnterPinExternal;
+    }
+
+    public void setAutoEnterPinExternal(String value) {
+        m_autoEnterPinExternal = value.equals("1") || value.equals("true");
+    }
+
+    public int getDaysToKeepVM() {
+        return m_daysToKeepVM;
+    }
+
+    public void setDaysToKeepVM(int value) {
+        m_daysToKeepVM = value;
+    }
+
     public String getSipPassword() {
         return m_sipPassword;
     }
@@ -733,5 +761,21 @@ public class User {
 
     public void setVmLanguage(String vmLanguage) {
         m_vmLanguage = vmLanguage;
+    }
+
+    public Vector<String> getCallbackUsers() {
+        return m_callbackUsers;
+    }
+
+    public void addCallbackUser(String callbackUser) {
+        this.m_callbackUsers.add(callbackUser);
+    }
+
+    public void setCallbackUsers(Vector<String> callbackUsers) {
+        this.m_callbackUsers = callbackUsers;
+    }
+
+    public boolean isMarkedForCallback() {
+        return !m_callbackUsers.isEmpty();
     }
 }

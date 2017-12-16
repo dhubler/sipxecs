@@ -34,6 +34,8 @@ public class MessageDescriptor {
     private String m_filePath;
     private String m_audioFormat;
     private String m_contentLength;
+    private String m_callerIdName;
+    private String m_callerIdNumber;
 
     public enum Priority {
         NORMAL("normal"),
@@ -104,15 +106,18 @@ public class MessageDescriptor {
     }
 
     public Date getTimeStampDate() {
+        return getTimeStampDateUtil(m_timestamp);
+    }
 
+    public static Date getTimeStampDateUtil(String timestamp) {
         SimpleDateFormat dateFormat = new SimpleDateFormat(DATE_FORMAT, Locale.ENGLISH);
         try {
-            return dateFormat.parse(m_timestamp);
+            return dateFormat.parse(timestamp);
         } catch (ParseException e) {
             // hmmm .. lets try the default locale (for backward compatibility)
             dateFormat = new SimpleDateFormat(DATE_FORMAT);
             try {
-                return dateFormat.parse(m_timestamp);
+                return dateFormat.parse(timestamp);
             } catch (ParseException e1) {
                 return null;
             }
@@ -180,5 +185,21 @@ public class MessageDescriptor {
 
     public void setAudioFormat(String audioFormat) {
         m_audioFormat = audioFormat;
+    }
+
+    public String getCallerIdName() {
+        return m_callerIdName;
+    }
+
+    public void setCallerIdName(String callerIdName) {
+        m_callerIdName = callerIdName;
+    }
+
+    public String getCallerIdNumber() {
+        return m_callerIdNumber;
+    }
+
+    public void setCallerIdNumber(String callerIdNumber) {
+        m_callerIdNumber = callerIdNumber;
     }
 }

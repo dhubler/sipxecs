@@ -114,11 +114,17 @@ public class UserConferenceResource extends UserResource {
             if (repr.m_moh != null) {
                 conf.setMohSource(repr.m_moh);
             }
-            if (repr.m_publicRoom != null) {
-                conf.setPublicRoom(repr.m_publicRoom);
+            if (repr.m_playEntryToneEnabled != null) {
+                conf.setPlayEntryToneEnabled(repr.m_playEntryToneEnabled);
             }
-            if (repr.m_moderatedRoom != null) {
-                conf.setModeratedRoom(repr.m_moderatedRoom);
+            if (repr.m_playExitToneEnabled != null) {
+                conf.setPlayExitToneEnabled(repr.m_playExitToneEnabled);
+            }
+            if (repr.m_recordAndPlayNameOnEntryEnabled != null) {
+                conf.setRecordAndPlayNameOnEntryEnabled(repr.m_recordAndPlayNameOnEntryEnabled);
+            }
+            if (repr.m_recordAndPlayNameOnExitEnabled != null) {
+                conf.setRecordAndPlayNameOnEXitEnabled(repr.m_recordAndPlayNameOnExitEnabled);
             }
 
             m_conferenceBridgeContext.saveConference(conf);
@@ -155,8 +161,10 @@ public class UserConferenceResource extends UserResource {
         private final Boolean m_sendActiveVideoOnly;
         private final Integer m_maxMembers;
         private final String m_moh;
-        private final Boolean m_moderatedRoom;
-        private final Boolean m_publicRoom;
+        private final Boolean m_playEntryToneEnabled;
+        private final Boolean m_playExitToneEnabled;
+        private final Boolean m_recordAndPlayNameOnEntryEnabled;
+        private final Boolean m_recordAndPlayNameOnExitEnabled;
 
         public RepresentableFull(Conference conference) {
             m_enabled = conference.isEnabled();
@@ -170,8 +178,10 @@ public class UserConferenceResource extends UserResource {
             m_sendActiveVideoOnly = conference.isVideoToggleFloor();
             m_maxMembers = conference.getConfMaxMembers();
             m_moh = conference.getMohSource();
-            m_moderatedRoom = conference.isModeratedRoom();
-            m_publicRoom = conference.isPublicRoom();
+            m_playEntryToneEnabled = conference.isPlayEntryToneEnabled();
+            m_playExitToneEnabled = conference.isPlayExitToneEnabled();
+            m_recordAndPlayNameOnEntryEnabled = conference.isRecordAndPlayNameOnEntryEnabled();
+            m_recordAndPlayNameOnExitEnabled = conference.isRecordAndPlayNameOnExitEnabled();
         }
     }
 

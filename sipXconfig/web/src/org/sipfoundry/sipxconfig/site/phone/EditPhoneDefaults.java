@@ -14,7 +14,6 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.tapestry.IComponent;
@@ -38,20 +37,18 @@ import org.sipfoundry.sipxconfig.setting.Setting;
 import org.sipfoundry.sipxconfig.setting.SettingDao;
 import org.sipfoundry.sipxconfig.setting.SettingFilter;
 import org.sipfoundry.sipxconfig.setting.SettingUtil;
-import org.sipfoundry.sipxconfig.setting.type.EnumSetting;
 
 public abstract class EditPhoneDefaults extends PhoneBasePage implements PageBeginRenderListener {
-    private static final String GROUP_VERSION_FIRMWARE_VERSION = "group.version/firmware.version";
 
     public static final String PAGE = "phone/EditPhoneDefaults";
+
+    public static final int GROUP_VERSION = 2;
 
     public static final int FW_TAB = -1;
 
     public static final int PHONE_SETTINGS = 0;
 
     private static final int LINE_SETTITNGS = 1;
-
-    public static final int GROUP_VERSION = 2;
 
     @InjectObject(value = "spring:hotelingLocator")
     public abstract HotelingLocator getHotellingLocator();
@@ -148,6 +145,13 @@ public abstract class EditPhoneDefaults extends PhoneBasePage implements PageBeg
 
     public void apply() {
         getSettingDao().saveGroup(getGroup());
+        //apply device version (firmware change) only for phones that can have this property
+        //configurable (polycom)
+        if (getDeviceVersion() != null) {
+            getPhoneContext().applyGroupFirmwareVersion(getGroup(),
+                DeviceVersion.getDeviceVersion(getPhone().getBeanId()
+                        + getDeviceVersion().getVersionId()), getPhone().getModelId());
+        }
     }
 
     public IPage cancel(IRequestCycle cycle) {
@@ -175,12 +179,15 @@ public abstract class EditPhoneDefaults extends PhoneBasePage implements PageBeg
         Line line = phone.createLine();
         phone.addLine(line);
         setPhone(phone);
-
-        DeviceVersion deviceVersion = getDeviceVersion();
-        if (deviceVersion == null) {
-            setDeviceVersion(phone.getDeviceVersion());
-        } else {
-            phone.setDeviceVersion(deviceVersion);
+        String groupVersion = getPhoneContext().getGroupFirmwareVersion(getPhone(), group);
+        if (groupVersion != null) {
+            phone.setSettingValue(Phone.GROUP_VERSION_FIRMWARE_VERSION, groupVersion);
+            DeviceVersion deviceVersion = getDeviceVersion();
+            if (deviceVersion == null) {
+                setDeviceVersion(DeviceVersion.getDeviceVersion(groupVersion));
+            } else {
+                phone.setDeviceVersion(deviceVersion);
+            }
         }
 
         String editSettingsName = getEditFormSettingName();
@@ -190,45 +197,7 @@ public abstract class EditPhoneDefaults extends PhoneBasePage implements PageBeg
             setEditFormSettingName(((Setting) nav.next()).getName());
         }
 
-        // Init. the group versions dropdown menu.
-        if (hasGroupVersions()) {
-            if (getGroupVersions() == null) {
-                Map<String, String> versions = ((EnumSetting) getGroup().inherhitSettingsForEditing(phone)
-                        .getSetting(GROUP_VERSION_FIRMWARE_VERSION).getType()).getEnums();
-                List<DeviceVersion> deviceVersions = new ArrayList<DeviceVersion>();
-                for (String version : versions.keySet()) {
-                    if (StringUtils.isNotBlank(version)) {
-                        DeviceVersion dv = DeviceVersion.getDeviceVersion(phone.getBeanId() + version);
-                        deviceVersions.add(dv);
-                    }
-                }
-                IPropertySelectionModel versionsSelectionModel = new GroupVersionsSelectionModel(deviceVersions);
-                setGroupVersions(versionsSelectionModel);
-            }
-            String groupVersion = getGroupVersion();
-            if (groupVersion == null) {
-                setGroupVersion(getGroup().inherhitSettingsForEditing(getPhone())
-                        .getSetting(GROUP_VERSION_FIRMWARE_VERSION).getValue());
-            } else {
-                getGroup().inherhitSettingsForEditing(getPhone()).getSetting(GROUP_VERSION_FIRMWARE_VERSION)
-                        .setValue(groupVersion);
-            }
-            if (!event.getRequestCycle().isRewinding()) {
-                if (getResourceId() != GROUP_VERSION) {
-                    setGroupVersion(null);
-                }
-            }
-        }
         editSettings();
-    }
-
-    public boolean hasGroupVersions() {
-        return getGroup().inherhitSettingsForEditing(getPhone()).getSetting(GROUP_VERSION_FIRMWARE_VERSION) != null;
-    }
-
-    public void applyGroupVersion() {
-        getPhoneContext().applyGroupFirmwareVersion(getGroup(),
-                DeviceVersion.getDeviceVersion(getPhone().getBeanId() + getGroupVersion()));
     }
 
     /**
@@ -286,7 +255,7 @@ public abstract class EditPhoneDefaults extends PhoneBasePage implements PageBeg
     }
 
     public class GroupVersionsSelectionModel implements IPropertySelectionModel {
-        List<DeviceVersion> m_versions = new ArrayList<DeviceVersion>();
+        private List<DeviceVersion> m_versions = new ArrayList<DeviceVersion>();
 
         public GroupVersionsSelectionModel(List<DeviceVersion> versions) {
             m_versions = versions;

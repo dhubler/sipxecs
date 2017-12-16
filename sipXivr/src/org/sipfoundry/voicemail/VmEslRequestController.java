@@ -23,12 +23,12 @@ import org.apache.log4j.Logger;
 import org.sipfoundry.commons.freeswitch.Play;
 import org.sipfoundry.commons.freeswitch.PromptList;
 import org.sipfoundry.commons.freeswitch.Record;
+import org.sipfoundry.commons.freeswitch.eslrequest.AbstractEslRequestController;
 import org.sipfoundry.commons.userdb.PersonalAttendant;
 import org.sipfoundry.commons.userdb.User;
 import org.sipfoundry.commons.userdb.ValidUsers;
 import org.sipfoundry.sipxivr.ApplicationConfiguraton;
 import org.sipfoundry.sipxivr.common.IvrChoice;
-import org.sipfoundry.sipxivr.eslrequest.AbstractEslRequestController;
 import org.sipfoundry.voicemail.mailbox.TempMessage;
 
 public class VmEslRequestController extends AbstractEslRequestController {
@@ -44,6 +44,7 @@ public class VmEslRequestController extends AbstractEslRequestController {
     private ApplicationConfiguraton m_config;
     private int m_recordRate = 8000;
     private int m_recordTime = 300;
+    private int m_autoEnterPinExternalDigits = 0;
 
     @Override
     public void extractParameters(Hashtable<String, String> parameters) {
@@ -90,10 +91,20 @@ public class VmEslRequestController extends AbstractEslRequestController {
             ident = "Mailbox " + m_currentUser.getUserName();
             if (!m_currentUser.hasVoicemail() && !m_currentUser.isInDirectory()) {
                 m_currentUser = null;
-                play("invalid_extension", "");
-                return;
+            } else {
+                if (m_currentUser.isAutoEnterPinExtension()) {
+                    setRedactDTMF(false);
+                    return;
+                }
             }
         } else {
+            User user = m_validUsers.getUserWithAutoEnterPinByExternalNumber(
+                    m_mailboxString, m_autoEnterPinExternalDigits);
+            if (user != null) {
+                m_currentUser = user;
+                setRedactDTMF(false);
+                return;
+            }
             ident = "Mailbox (unknown)";
         }
         PromptList welcomePl = getPromptList("welcome");
@@ -272,6 +283,10 @@ public class VmEslRequestController extends AbstractEslRequestController {
 
     public void setRecordTime(int recordTime) {
         m_recordTime = recordTime;
+    }
+
+    public void setAutoEnterPinExternalDigits(int autoEnterPinExternalDigits) {
+        m_autoEnterPinExternalDigits = autoEnterPinExternalDigits;
     }
 
     private void extractCurrentUser(Hashtable<String, String> parameters) {

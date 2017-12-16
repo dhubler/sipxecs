@@ -31,18 +31,13 @@ public interface MongoConstants {
     static final String USERBUSYPROMPT = "bsyprmpt";
     static final String MOH = "moh";
     static final String VOICEMAILTUI = "vcmltui";
+    static final String FORWARD_DELETE_VOICEMAIL = "fwddelvm";
     static final String EMAIL = "email";
     static final String NOTIFICATION = "notif";
     static final String ATTACH_AUDIO = "attaudio";
     static final String ALT_EMAIL = "altemail";
     static final String ALT_NOTIFICATION = "altnotif";
     static final String ALT_ATTACH_AUDIO = "altattaudio";
-    static final String SYNC = "synch";
-    static final String HOST = "host";
-    static final String PORT = "port";
-    static final String TLS = "tls";
-    static final String ACCOUNT = "acnt";
-    static final String PASSWD = "pswd";
     static final String DISPLAY_NAME = "dspl";
     static final String HASHED_PASSTOKEN = "hshpstk";
     static final String IM_ENABLED = "imenbld";
@@ -60,6 +55,7 @@ public interface MongoConstants {
     static final String FAX_NUMBER = "fax";
     static final String LOCATION = "loctn"; // this is different than loc field in user
                                             // location db
+    static final String LOCATIONS = "locations";
     static final String HOME_PHONE_NUMBER = "hmph";
     static final String CELL_PHONE_NUMBER = "cell";
     static final String AVATAR = "avt";
@@ -103,9 +99,6 @@ public interface MongoConstants {
     static final String CONF_DESCRIPTION = "cnfdescr";
     static final String CONF_OWNER = "cnfown";
     static final String CONF_PIN = "cnfpin";
-    static final String CONF_MODERATED = "cnfmod";
-    static final String CONF_PUBLIC = "cnfpbl";
-    static final String CONF_MEMBERS_ONLY = "cnfmonly";
     static final String CONF_URI = "cnfuri";
     static final String PERMISSIONS = "prm";
     static final String CFWDTIME = "cfwdtm";
@@ -116,6 +109,7 @@ public interface MongoConstants {
     static final String TO_URI = "to";
     static final String CALLID = "cid";
     static final String VMONDND = "vmondnd";
+    static final String CALLBACK_LIST = "cbu";
     // speed dials
     static final String SPEEDDIAL = "spdl";
     static final String USER = "usr";
@@ -139,6 +133,9 @@ public interface MongoConstants {
     static final String ITEM = "itm";
     static final String DISTRIB_LISTS = "dlst";
     static final String FORCE_PIN_CHANGE= "fpchg";
+    static final String AUTO_ENTER_PIN_EXTENSION= "aepe";
+    static final String AUTO_ENTER_PIN_EXTERNAL= "aepen";
+    static final String DAYS_TO_KEEP_VM= "dtkvm";
     // AUTH CODE
     static final String AUTH_CODE = "authc";
     // GROUP
@@ -174,4 +171,15 @@ public interface MongoConstants {
 
     //phones
     static final String SERIAL_NUMBER = "mac";
+    static final String LINES = "phLines";
+    static final String PHONE_MODEL = "model";
+
+    //location
+    static final String LOCATION_NAME="loc";
+    static final String LOCATION_RESTRICTIONS_DOMAINS="loc_restr_dom";
+    static final String LOCATION_RESTRICTIONS_SUBNETS="loc_restr_sbnet";
+    static final String LOCATION_ASSOCIATIONS="loc_assoc";
+    static final String LOCATION_ASSOCIATIONS_INBOUND="loc_assoc_inbound";
+    static final String LOCATION_ASSOCIATIONS_FALLBACK="loc_assoc_fallback";
+
 }

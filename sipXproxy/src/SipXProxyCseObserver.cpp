@@ -14,6 +14,8 @@
 #include "SipXProxyCseObserver.h"
 #include <net/SipUserAgent.h>
 #include <net/SipXauthIdentity.h>
+#include <sipdb/EntityDB.h>
+#include <sipxproxy/SipRouter.h>
 #include <os/OsDateTime.h>
 #include "os/OsEventMsg.h"
 #include "os/OsMutex.h"
@@ -29,7 +31,6 @@
 // CONSTANTS
 const int SipXProxyCallStateFlushInterval = 20; /* seconds */
 const int SipXProxyCallStateCleanupInterval = 60 * 30; /* 60 seconds * 30 = 30 minutes */
-
 
 class BranchTimePair : public UtlString
 {
@@ -140,7 +141,8 @@ SipXProxyCseObserver::SipXProxyCseObserver(SipUserAgent&         sipUserAgent,
    mpWriter(pWriter),
    mSequenceNumber(0),
    mFlushTimer(getMessageQueue(), 0),
-   mCallTransMutex(OsMutex::Q_FIFO)
+   mCallTransMutex(OsMutex::Q_FIFO),
+   _logAuthCodes(false)
 {
    OsTime timeNow;
    OsDateTime::getCurTime(timeNow);
@@ -368,7 +370,7 @@ UtlBoolean SipXProxyCseObserver::handleMessage(OsMsg& eventMessage)
             {
                if (toTag.isNull())
                {
-                  sipMsg->getContactEntry(0, &contact);               
+                  sipMsg->getContactEntry(0, &contact);
                   thisMsgIs = aCallRequest;
                }
             }
@@ -399,8 +401,8 @@ UtlBoolean SipXProxyCseObserver::handleMessage(OsMsg& eventMessage)
                   // purposes.  If not dialog-forming, then any final response above 400
                   // except 401 Unauthorized, 407 Proxy Authentication Required and 
                   // 408 Request Timeout will terminate.  If we're in a dialog then
-            	  // only 408 (Request Timeout) and 481 (Call/Transaction does not exist)
-            	  // will terminate the dialog.
+                  // only 408 (Request Timeout) and 481 (Call/Transaction does not exist)
+                  // will terminate the dialog.
 
                   rspStatus = sipMsg->getResponseStatusCode();
                   if (rspStatus >= SIP_4XX_CLASS_CODE) // any failure
@@ -415,6 +417,28 @@ UtlBoolean SipXProxyCseObserver::handleMessage(OsMsg& eventMessage)
                   {
                      thisMsgIs = aCallSetup;
                      sipMsg->getContactEntry(0, &contact);
+
+                     // CDR problem while local phone is forwarded to mobile phone.
+                     // SipMsg has transaction. While, sipTransaction request uri has a value "AL" that
+                     // informs about forwarded call. This uri added to hash map with session call id.
+                     // And this uri used instead of contact value when call setup event is processing
+
+                     SipTransaction* pTransaction = sipMsg->getSipTransaction();
+
+                     if (pTransaction)
+                     {
+                         UtlString headerCallDest;
+                         UtlString inviteUriStr(pTransaction->getRequestUri());
+                         Url inviteUri(inviteUriStr, Url::AddrSpec);
+                         inviteUri.getUrlParameter(SIP_SIPX_CALL_DEST_FIELD, headerCallDest, 0);
+
+                         if (headerCallDest == "AL")
+                         {
+                             UtlString callId;
+                             sipMsg->getCallIdField(&callId);
+                             mCallIdRequiestUriMap.insertKeyAndValue(new UtlString(callId), new UtlString(pTransaction->getRequestUri()));
+                         }
+                     }
                   }
                }
                else
@@ -466,9 +490,6 @@ UtlBoolean SipXProxyCseObserver::handleMessage(OsMsg& eventMessage)
             UtlString toField;
             sipMsg->getToField(&toField);
             
-            UtlString fromField;
-            sipMsg->getFromField(&fromField);
-
 
             // collect the branch Id (i.e. transaction id) and via count.
             UtlString viaValue;
@@ -488,6 +509,34 @@ UtlBoolean SipXProxyCseObserver::handleMessage(OsMsg& eventMessage)
             UtlString replaces_fromTag;
             UtlString matchingIdentityHeader;
             SipXauthIdentity sipxIdentity(*sipMsg, matchingIdentityHeader, true,SipXauthIdentity::allowUnbound);
+            
+            //
+            // Get the Entity record if the auth-identity exists
+            //
+            UtlString authIdentity;
+            sipxIdentity.getIdentity(authIdentity);
+            EntityRecord entity;
+            
+            if (!authIdentity.isNull())
+            {
+              std::string identity = authIdentity.str();
+              SipRouter::getEntityDBInstance()->findByIdentity(identity, entity);
+            }
+            
+            //
+            // Determine if the entity record has an authc field
+            // Append it to the from uri
+            //
+            UtlString fromField;
+            if (_logAuthCodes && !entity.authc().empty())
+            {
+              fromUrl.setUrlParameter("auth-code", entity.authc().c_str());
+              fromUrl.toString(fromField);
+            }
+            else
+            {
+              sipMsg->getFromField(&fromField);
+            }
 
             sipMsg->getReferToField(referTo);
             sipMsg->getReferredByField(referredBy);   
@@ -540,13 +589,16 @@ UtlBoolean SipXProxyCseObserver::handleMessage(OsMsg& eventMessage)
                         // with this info. Otherwise skip over.
                         if ( paiPresent ) {
                            callIdBranchIdTime = (BranchTimePair*) mCallTransMap.findValue(&callId);
+
                            if ( callIdBranchIdTime && (*callIdBranchIdTime->getPaiPresent() == false) ) {
                               // need to generate another call request event in order to state originator is internal.
                               callIdBranchIdTime->setPaiPresent(&paiPresent);
                            }
                            else {
-                              mCallTransMutex.release();
-                              return(TRUE);
+                              if ( !requestUri.contains("sipxecs-lineid") ) {
+                                 mCallTransMutex.release();
+                                 return(TRUE);
+                              }
                            }
                         }
                         else {
@@ -554,9 +606,11 @@ UtlBoolean SipXProxyCseObserver::handleMessage(OsMsg& eventMessage)
                            return(TRUE);
                         }
                      }
+
                      mCallTransMutex.release();
                   }
-                  mpBuilder->callRequestEvent(mSequenceNumber, timeNow, contact, references, branchId, viaCount, paiPresent);
+
+                  mpBuilder->callRequestEvent(mSequenceNumber, timeNow, requestUri, contact, references, branchId, viaCount, paiPresent);
                   break;
                   
                case aCallSetup:
@@ -566,16 +620,11 @@ UtlBoolean SipXProxyCseObserver::handleMessage(OsMsg& eventMessage)
                   callIdBranchIdTime = (BranchTimePair*) mCallTransMap.findValue(&callId);
                   if ( callIdBranchIdTime && (0 == branchId.compareTo(callIdBranchIdTime)) ) {
                      if ( rspStatus > SIP_2XX_CLASS_CODE ) {
-                           mCallTransMap.destroy(&callId);
-                        }
-                     mCallTransMutex.release();
+                        mCallTransMap.destroy(&callId);
+                     }
                   }
-                  else
-                  {
-                     // CallId/BranchId are either not found or doesn't match.  Not a final response.
-                     mCallTransMutex.release();
-                     return(TRUE);
-                  }
+                  mCallTransMutex.release();
+
                   for (int rrNum = 0;
                        (!routeFound && sipMsg->getRecordRouteUri(rrNum, &recordRoute));
                        rrNum++
@@ -588,7 +637,19 @@ UtlBoolean SipXProxyCseObserver::handleMessage(OsMsg& eventMessage)
                         routeFound = true;
                      }
                   }
-                  mpBuilder->callSetupEvent(mSequenceNumber, timeNow, contact, calleeRoute, branchId, viaCount);
+
+                  {
+                     UtlString* pUrlMappingCdrStr = dynamic_cast<UtlString*>(mCallIdRequiestUriMap.findValue(&callId));
+
+                     if (pUrlMappingCdrStr && pUrlMappingCdrStr->data()) {
+                         mpBuilder->callSetupEvent(mSequenceNumber, timeNow, *pUrlMappingCdrStr, calleeRoute, branchId, viaCount);
+                         mCallIdRequiestUriMap.destroy(&callId);
+                     }
+                     else
+                     {
+                         mpBuilder->callSetupEvent(mSequenceNumber, timeNow, contact, calleeRoute, branchId, viaCount);
+                     }
+                  }
                   break;
    
                case aCallFailure:

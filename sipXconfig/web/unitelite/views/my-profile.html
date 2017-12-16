@@ -27,6 +27,10 @@
             <div class="entry-loc">
               {{ myprofile.info.profile.location }}
             </div>
+
+            <div ng-controller="UploadFile" class="entry-choose-file">
+              <input type="file" nv-file-select uploader="uploader">
+            </div>
           </div>
         </div>
 
@@ -257,12 +261,13 @@
       </div>
       <div class="clearfix">
         <button class="btn btn-default pull-left"
-          data-ng-disabled="!profileForm.$dirty"
+          data-ng-disabled="!profileForm.$dirty && !myprofile.uploadAvatar"
           data-ng-click="myprofile.init(); profileForm.$setPristine();">
           Cancel
         </button>
-        <button class="btn btn-info pull-left" data-ng-click="myprofile.save(); profileForm.$setPristine();"
-          data-ng-disabled="!profileForm.$dirty">
+        <button class="btn btn-success pull-left"
+          data-ng-disabled="!myprofile.uploadAvatar && (!profileForm.$dirty || profileForm.$invalid)"
+          data-ng-click="myprofile.save(); profileForm.$setPristine();">
           Save
         </button>
         <div class="spinner-wrapper pull-left inline animated fade"

@@ -80,7 +80,7 @@ public interface PhoneContext extends DataObjectSource {
      * @see spring 3 security guidelines
      * @param group
      */
-    void saveGroup(Group group);
+    void storeGroup(Group group);
 
     /**
      * This method is meant to be intercepted when user group saving permissions are effective
@@ -147,5 +147,7 @@ public interface PhoneContext extends DataObjectSource {
     Phone getPhoneBySerialNumber(String serialNumber);
     List<Phone> loadPhonesByPage(int firstRow, int pageSize);
 
-    void applyGroupFirmwareVersion(Group group, DeviceVersion v);
+    void applyGroupFirmwareVersion(Group group, DeviceVersion v, String modelId);
+
+    String getGroupFirmwareVersion(Phone phone, Group group);
 }

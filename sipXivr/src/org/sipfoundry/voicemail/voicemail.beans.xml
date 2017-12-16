@@ -12,6 +12,7 @@
 
   <bean id="vmEslRequestController" class="org.sipfoundry.voicemail.VmEslRequestController" scope="eslRequest">
     <property name="sipxchangeDomainName" value="${ivr.sipxchangeDomainName}" />
+    <property name="bridgedTransfer" value="${ivr.transferByBridge}" />
     <property name="operatorAddr" value="${ivr.operatorAddr}" />
     <property name="fsConfig" ref="fsConfig" />
     <property name="fsEventSocket" ref="fsEventSocket" />
@@ -19,6 +20,7 @@
     <property name="voicemailConfiguration" ref="voicemailConfiguration" />
     <property name="recordRate" value="${record.rate}" />
     <property name="recordTime" value="${record.time}" />
+    <property name="autoEnterPinExternalDigits" value="${security.autoEnterPinExternalDigits}" />
   </bean>
 
   <bean id="depositAction" class="org.sipfoundry.voicemail.Deposit" scope="eslRequest">
@@ -27,7 +29,8 @@
     <property name="depositMap" ref="depositMap" />
     <property name="mailboxManager" ref="mailboxManager" />
     <property name="validUsers" ref="validUsers" />
-    <property name="operatorAddr" value="${ivr.operatorAddr}" />    
+    <property name="operatorAddr" value="${ivr.operatorAddr}" />
+    <property name="hzEnabled" value="${ivr.hzEnabled}" />    
   </bean>
 
   <bean id="depositMap" class="java.util.HashMap" />

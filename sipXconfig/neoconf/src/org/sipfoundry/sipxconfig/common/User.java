@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -40,11 +41,12 @@ import org.sipfoundry.sipxconfig.forwarding.CallSequence;
 import org.sipfoundry.sipxconfig.im.ImAccount;
 import org.sipfoundry.sipxconfig.ivr.Ivr;
 import org.sipfoundry.sipxconfig.permission.PermissionName;
+import org.sipfoundry.sipxconfig.search.IndexedBean;
 
 /**
  * Can be user that logs in, can be superadmin, can be user for phone line
  */
-public class User extends AbstractUser implements Replicable {
+public class User extends AbstractUser implements Replicable, IndexedBean {
     private static final Log LOG = LogFactory.getLog(User.class);
     private static final String VM_ENABLED_SETTING_PATH = "voicemail/vacation/vmEnabled";
     private static final String ALIAS_RELATION = "alias";
@@ -53,6 +55,9 @@ public class User extends AbstractUser implements Replicable {
     private static final String E911_SETTING_PATH = "e911/location";
     private static final String PHANTOM_USER = "phantom/enabled";
     private static final String FORCE_PIN_CHANGE = "voicemail/security/force-pin-change";
+    private static final String AUTO_ENTER_PIN_EXTENSION = "voicemail/security/auto-enter-pin-extension";
+    private static final String AUTO_ENTER_PIN_EXTERNAL = "voicemail/security/auto-enter-pin-external";
+    private static final String DAYS_TO_KEEP_VM = "voicemail/security/days-to-keep-vm";
     private String m_identity;
     private boolean m_validUser = true;
 
@@ -267,6 +272,30 @@ public class User extends AbstractUser implements Replicable {
         getSettings().getSetting(FORCE_PIN_CHANGE).setTypedValue(force);
     }
 
+    public boolean isAutoEnterPinExtension() {
+        return (Boolean) getSettingTypedValue(AUTO_ENTER_PIN_EXTENSION);
+    }
+
+    public void setAutoEnterPinExtension(boolean autoExtension) {
+        getSettings().getSetting(AUTO_ENTER_PIN_EXTENSION).setTypedValue(autoExtension);
+    }
+
+    public boolean isAutoEnterPinExternal() {
+        return (Boolean) getSettingTypedValue(AUTO_ENTER_PIN_EXTERNAL);
+    }
+
+    public void setAutoEnterPinExternal(boolean autoExternal) {
+        getSettings().getSetting(AUTO_ENTER_PIN_EXTERNAL).setTypedValue(autoExternal);
+    }
+
+    public Integer getDaysToKeepVM() {
+        return (Integer) getSettingTypedValue(DAYS_TO_KEEP_VM);
+    }
+
+    public void setDaysToKeepVM(Integer daysToKeepVm) {
+        getSettings().getSetting(DAYS_TO_KEEP_VM).setTypedValue(daysToKeepVm);
+    }
+
     public Integer getE911LocationId() {
         if (getSettingTypedValue(E911_SETTING_PATH) == null) {
             return null;
@@ -295,5 +324,13 @@ public class User extends AbstractUser implements Replicable {
 
     public void setDepositVoicemail(boolean value) {
         setSettingTypedValue(VM_ENABLED_SETTING_PATH, value);
+    }
+
+    @Override
+    public Set<String> getIndexValues() {
+        Set<String> values = new LinkedHashSet<String>();
+        values.add(getName());
+        values.addAll(getAliases());
+        return values;
     }
 }
